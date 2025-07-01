@@ -33,21 +33,17 @@ function interactiveTailoringUI:create()
 end
 
 
-function interactiveTailoringUI:new(x, y, player, clothing)
-    local playerNum = player:getPlayerNum()
+function interactiveTailoringUI:new(player, clothing)
 
-    local width = 460
-    if x == -1 then x = getPlayerScreenLeft(playerNum) + (getPlayerScreenWidth(playerNum) - width) / 2 end
-
-    local o = ISPanel.new(self, x, y, width, 300)
+    local w, h = 460, 300
+    local x, y = (getPlayerScreenWidth(0)-w)/2, (getPlayerScreenHeight(0)-h)/2
+    local o = ISPanel.new(self, x, y, w, h)
 
     o.player = player
-    o.playerNum = playerNum
     o.clothing = clothing
+
     o.borderColor = {r=0.4, g=0.4, b=0.4, a=1}
     o.backgroundColor = {r=0, g=0, b=0, a=0.8}
 
     return o
 end
-
-ISGarmentUI = interactiveTailoringUI
