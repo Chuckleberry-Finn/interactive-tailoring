@@ -114,7 +114,7 @@ function interactiveTailoringUI:render()
         self:drawRectBorder(scissorsX-2, clothingY-2, self.clothingUI.iW+4, self.clothingUI.iH+4, 0.7, 0.5, 0.5, 0.5)
         self:drawItemIcon(self.scissors, scissorsX, clothingY, 1, self.clothingUI.iW, self.clothingUI.iH)
     else
-        self:drawRectBorder(scissorsX-2, clothingY-2, self.clothingUI.iW+4, self.clothingUI.iH+4, self.activeItemA,
+        self:drawRectBorder(scissorsX-2, clothingY-2, self.clothingUI.iW+4, self.clothingUI.iH+4,
                 self.failColor.a*0.66, self.failColor.r, self.failColor.g, self.failColor.b)
         self:drawTexture(self.failScissors, scissorsX, clothingY, self.failColor.a, self.failColor.r, self.failColor.g, self.failColor.b)
     end
@@ -138,7 +138,7 @@ end
 
 function interactiveTailoringUI:fetchItem(forThis, type,tag)
     if self[forThis] and self[forThis]:isInPlayerInventory() then return end
-    if not type and not tag then self[forThis] = false return end
+    if (not type and not tag) then self[forThis] = false return end
     self[forThis] = self.player:getInventory():getItemFromType(type, true, true) or self.player:getInventory():getFirstTagRecurse(tag) or false
 end
 
