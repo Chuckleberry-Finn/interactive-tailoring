@@ -1,11 +1,12 @@
-require "ISUI/ISGarmentUI.lua"
 require "ISUI/ISCollapsableWindow.lua"
+---ISGarmentUI
 
 interactiveTailoringUI = ISCollapsableWindow:derive("interactiveTailoringUI")
 interactiveTailoringUI.font = getTextManager():getFontHeight(UIFont.NewMedium)
 
 function interactiveTailoringUI:update()
     ISCollapsableWindow.update(self)
+    if not self.clothing or not self.clothing:isInPlayerInventory() then self:close() end
 end
 
 
@@ -32,8 +33,6 @@ function interactiveTailoringUI:render()
 
     local tbh = self:titleBarHeight()
 
-    local holeCords = {}
-
     ---fabric
     local gridY = ((self.padding+self.gridScale)*2)+tbh
     for _x=0, self.gridW-1 do
@@ -50,8 +49,8 @@ function interactiveTailoringUI:render()
         for _y=1, #self.holes[_x] do
             if self.holes[_x][_y] then
                 self:drawTextureScaled(getTexture("media/textures/hole.png"),
-                        self.padding + (self.gridScale*(_x-1)), gridY + ((_y-1)*self.gridScale),
-                        self.gridScale, self.gridScale,
+                        self.padding + (self.gridScale*(_x-1))-2, gridY + ((_y-1)*self.gridScale)-2,
+                        self.gridScale+4, self.gridScale+4,
                         self.clothing:getA(), self.clothing:getR(), self.clothing:getG(), self.clothing:getB())
             end
         end
@@ -80,20 +79,45 @@ function interactiveTailoringUI:render()
     ---clothing
     local clothingX = self.padding+((self.gridW/2)*self.gridScale)-(self.clothingUI.iW/2)
     local clothingY = self.padding+tbh+(self.clothingUI.iH/2)
-    self:drawRectBorder(clothingX-2, clothingY-2, self.clothingUI.iW+4, self.clothingUI.iH+4, self.activeItemA, 0.5, 0.5, 0.5)
+    self:drawRectBorder(clothingX-2, clothingY-2, self.clothingUI.iW+4, self.clothingUI.iH+4, 0.7, 0.5, 0.5, 0.5)
     self:drawItemIcon(self.clothing, clothingX, clothingY, 1, self.clothingUI.iW, self.clothingUI.iH)
 
     ---thread
     local threadX = sidebarX+(self.gridScale*0.66)
-    self:drawRectBorder(threadX-2, clothingY-2, self.clothingUI.iW+4, self.clothingUI.iH+4, self.activeItemA, 0.5, 0.5, 0.5)
+    self:fetchItem("thread", "Thread", "Thread")
+    if self.thread then
+        self:drawRectBorder(threadX-2, clothingY-2, self.clothingUI.iW+4, self.clothingUI.iH+4, 0.7, 0.5, 0.5, 0.5)
+        self:drawItemIcon(self.thread, threadX, clothingY, 1, self.clothingUI.iW, self.clothingUI.iH)
+    else
+        self:drawRectBorder(threadX-2, clothingY-2, self.clothingUI.iW+4, self.clothingUI.iH+4,
+                self.failColor.a*0.66, self.failColor.r, self.failColor.g, self.failColor.b)
+        self:drawTexture(self.failThread, threadX, clothingY, self.failColor.a, self.failColor.r, self.failColor.g, self.failColor.b)
+    end
 
     ---needle
     local needleX = threadX-(self.padding*2)-self.gridScale
-    self:drawRectBorder(needleX-2, clothingY-2, self.clothingUI.iW+4, self.clothingUI.iH+4, self.activeItemA, 0.5, 0.5, 0.5)
+    self:fetchItem("needle", "Needle", "SewingNeedle")
+    if self.needle then
+        self:drawRectBorder(needleX-2, clothingY-2, self.clothingUI.iW+4, self.clothingUI.iH+4, 0.7, 0.5, 0.5, 0.5)
+        self:drawItemIcon(self.needle, needleX, clothingY, 1, self.clothingUI.iW, self.clothingUI.iH)
+    else
+        self:drawRectBorder(needleX-2, clothingY-2, self.clothingUI.iW+4, self.clothingUI.iH+4,
+                self.failColor.a*0.66, self.failColor.r, self.failColor.g, self.failColor.b)
+        self:drawTexture(self.failNeedle, needleX, clothingY, self.failColor.a, self.failColor.r, self.failColor.g, self.failColor.b)
+    end
 
     ---scissors
     local scissorsX = needleX-(self.padding*2)-self.gridScale
-    self:drawRectBorder(scissorsX-2, clothingY-2, self.clothingUI.iW+4, self.clothingUI.iH+4, self.activeItemA, 0.5, 0.5, 0.5)
+
+    self:fetchItem("scissors", "Scissors", "Scissors")
+    if self.scissors then
+        self:drawRectBorder(scissorsX-2, clothingY-2, self.clothingUI.iW+4, self.clothingUI.iH+4, 0.7, 0.5, 0.5, 0.5)
+        self:drawItemIcon(self.scissors, scissorsX, clothingY, 1, self.clothingUI.iW, self.clothingUI.iH)
+    else
+        self:drawRectBorder(scissorsX-2, clothingY-2, self.clothingUI.iW+4, self.clothingUI.iH+4, self.activeItemA,
+                self.failColor.a*0.66, self.failColor.r, self.failColor.g, self.failColor.b)
+        self:drawTexture(self.failScissors, scissorsX, clothingY, self.failColor.a, self.failColor.r, self.failColor.g, self.failColor.b)
+    end
 end
 
 
@@ -111,6 +135,18 @@ function interactiveTailoringUI.open(player, clothing)
     return ui
 end
 
+
+function interactiveTailoringUI:fetchItem(forThis, type,tag)
+    if self[forThis] and self[forThis]:isInPlayerInventory() then return end
+    if not type and not tag then self[forThis] = false return end
+    self[forThis] = self.player:getInventory():getItemFromType(type, true, true) or self.player:getInventory():getFirstTagRecurse(tag) or false
+end
+
+
+interactiveTailoringUI.failThread = getScriptManager():getItem("Thread"):getNormalTexture()
+interactiveTailoringUI.failNeedle = getScriptManager():getItem("Needle"):getNormalTexture()
+interactiveTailoringUI.failScissors = getScriptManager():getItem("Scissors"):getNormalTexture()
+interactiveTailoringUI.failColor = {a=0.4,r=1,g=0.2,b=0.2}
 
 ---@param clothing InventoryItem|Clothing
 function interactiveTailoringUI:new(player, clothing)
@@ -136,11 +172,12 @@ function interactiveTailoringUI:new(player, clothing)
     o.player = player
     o.clothing = clothing
 
+    o:fetchItem("thread", "Thread", "Thread")
+    o:fetchItem("needle", "Needle", "SewingNeedle")
+    o:fetchItem("scissors", "Scissors", "Scissors")
+
     o.threadFont = UIFont.NewLarge
     o.threadFontHeight = getTextManager():getFontHeight(o.threadFont)
-
-    o.activeItemA = 0.7
-    o.inactiveItemA = 0.4
 
     o.holes = {}
     for _x=1, o.gridW do
