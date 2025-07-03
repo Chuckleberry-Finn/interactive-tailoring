@@ -50,22 +50,15 @@ function pieceHandler.clonePiece(piece)
 end
 
 
-function pieceHandler.rotate(piece)
-    local rotated = {}
-    for i, cell in ipairs(piece.xy) do
-        local x, y = cell[1], cell[2]
-        table.insert(rotated, {y, -x})
-    end
-    piece.xy = rotated
-end
-
-
-function pieceHandler.pickRandomType()
+function pieceHandler.pickRandomType(rotate)
     pieceHandler.buildPieceTypeIndex()
     local rand = ZombRand(#pieceHandler.pieceTypesIndex)+1
     local id = pieceHandler.pieceTypesIndex[rand]
     local piece = pieceHandler.pieceTypes[id]
-    return pieceHandler.clonePiece(piece)
+
+    local newPiece = pieceHandler.clonePiece(piece)
+
+    return newPiece
 end
 
 

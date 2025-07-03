@@ -388,7 +388,7 @@ function interactiveTailoringUI:prerender()
         local mdHoles = itModData and itModData.holes
         if mdHoles then
             for part,hole in pairs(mdHoles) do
-                local xy = hole.x_y
+                local xy = hole.xy
                 for _,xys in pairs(xy) do
                     local _x, _y = xys[1], xys[2]
                     if _x and _y then
@@ -603,7 +603,7 @@ function interactiveTailoringUI:getHoles()
             local attempts = 20
 
             mdHoles[part] = mdHoles[part] or {}
-            mdHoles[part].x_y = mdHoles[part].x_y or {}
+            mdHoles[part].xy = mdHoles[part].xy or {}
             
             while attempts > 0 and not validPlacement do
                 attempts = attempts - 1
@@ -628,9 +628,10 @@ function interactiveTailoringUI:getHoles()
                         if pt[1] and pt[2] then
                             local x = ox + pt[1]
                             local y = oy + pt[2]
+                            grid[x] = grid[x] or {}
                             grid[x][y] = true
 
-                            table.insert(mdHoles[part].x_y, {x, y})
+                            table.insert(mdHoles[part].xy, {x, y})
                         end
                     end
                 end
