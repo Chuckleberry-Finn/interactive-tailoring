@@ -4,7 +4,7 @@ require "interactiveTailoring_ui.lua"
 local original = ISInventoryPaneContextMenu.onInspectClothingUI
 
 function ISInventoryPaneContextMenu.onInspectClothingUI(player, clothing)
-    --original(player, clothing)
+    original(player, clothing)
 
     if luautils.haveToBeTransfered(player, clothing) then
         local action = ISInventoryTransferAction:new(player, clothing, clothing:getContainer(), player:getInventory())

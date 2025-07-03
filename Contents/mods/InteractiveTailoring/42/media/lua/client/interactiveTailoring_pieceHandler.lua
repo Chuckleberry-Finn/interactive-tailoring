@@ -23,8 +23,7 @@ end
 
 
 function pieceHandler.clonePiece(piece)
-    local out = {}
-    for i = 1, #piece do out[i] = {piece[i][1], piece[i][2]} end
+    local out = copyTable(piece)
     return out
 end
 
