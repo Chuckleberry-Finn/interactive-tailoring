@@ -388,23 +388,22 @@ function interactiveTailoringUI:prerender()
         local mdHoles = itModData and itModData.holes
         if mdHoles then
             for part,hole in pairs(mdHoles) do
-                local xy = hole.xy
-                for _x,ys in pairs(xy) do
-                    for _y,_ in pairs(ys) do
-                        if mdHoles[part].xy[_x][_y] then
+                local xy = hole.x_y
+                for _,xys in pairs(xy) do
+                    local _x, _y = xys[1], xys[2]
+                    if _x and _y then
 
-                            local patch = self.clothing:getPatchType(part)
-                            local patchType = patch and patch:getFabricType()
-                            if patch then
-                                local color = self.patchColor[patchType]
-                                self:drawTextureScaled(self.fabricTexture,
-                                        self.padding + (self.gridScale*(_x-1)), self.gridY + ((_y-1)*self.gridScale),
-                                        self.gridScale, self.gridScale, 1, color.r, color.g, color.b)
-                            else
-                                self:drawTextureScaled(self.holeTexture,
-                                        self.padding + (self.gridScale*(_x-1))-2, self.gridY + ((_y-1)*self.gridScale)-2,
-                                        self.gridScale+4, self.gridScale+4, 1, 1, 1, 1)
-                            end
+                        local patch = self.clothing:getPatchType(part)
+                        local patchType = patch and patch:getFabricType()
+                        if patch then
+                            local color = self.patchColor[patchType]
+                            self:drawTextureScaled(self.fabricTexture,
+                                    self.padding + (self.gridScale*(_x-1)), self.gridY + ((_y-1)*self.gridScale),
+                                    self.gridScale, self.gridScale, 1, color.r, color.g, color.b)
+                        else
+                            self:drawTextureScaled(self.holeTexture,
+                                    self.padding + (self.gridScale*(_x-1))-2, self.gridY + ((_y-1)*self.gridScale)-2,
+                                    self.gridScale+4, self.gridScale+4, 1, 1, 1, 1)
                         end
                     end
                 end
@@ -589,10 +588,7 @@ function interactiveTailoringUI:getHoles()
         local hole = visual:getHole(part) + visual:getBasicPatch(part) + visual:getDenimPatch(part) + visual:getLeatherPatch(part)
 
         if hole > 0 then
-
-            --todo remove this later
-            if mdHoles[part] and (not mdHoles[part].xy) or (not mdHoles[part].id) then mdHoles[part] = nil end
-
+            
             local piece = mdHoles[part] or pieceHandler.pickRandomType()
 
             local maxX, maxY = 0, 0
@@ -607,8 +603,7 @@ function interactiveTailoringUI:getHoles()
             local attempts = 20
 
             mdHoles[part] = mdHoles[part] or {}
-            mdHoles[part].id = piece.id
-            mdHoles[part].xy = mdHoles[part].xy or {}
+            mdHoles[part].x_y = mdHoles[part].x_y or {}
             
             while attempts > 0 and not validPlacement do
                 attempts = attempts - 1
@@ -635,8 +630,7 @@ function interactiveTailoringUI:getHoles()
                             local y = oy + pt[2]
                             grid[x][y] = true
 
-                            mdHoles[part].xy[x] = mdHoles[part].xy[x] or {}
-                            mdHoles[part].xy[x][y] = true
+                            table.insert(mdHoles[part].x_y, {x, y})
                         end
                     end
                 end
