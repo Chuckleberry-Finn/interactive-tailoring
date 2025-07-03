@@ -591,7 +591,7 @@ function interactiveTailoringUI:getHoles()
         if hole > 0 then
 
             --todo remove this later
-            if mdHoles[part] and (not mdHoles[part].xy) then mdHoles[part] = nil end
+            if mdHoles[part] and (not mdHoles[part].xy) or (not mdHoles[part].id) then mdHoles[part] = nil end
 
             local piece = mdHoles[part] or pieceHandler.pickRandomType()
 
@@ -606,6 +606,10 @@ function interactiveTailoringUI:getHoles()
             local validPlacement = false
             local attempts = 20
 
+            mdHoles[part] = mdHoles[part] or {}
+            mdHoles[part].id = piece.id
+            mdHoles[part].xy = mdHoles[part].xy or {}
+            
             while attempts > 0 and not validPlacement do
                 attempts = attempts - 1
                 local ox = ZombRand(self.gridSizeW - maxX) + 1
@@ -631,9 +635,8 @@ function interactiveTailoringUI:getHoles()
                             local y = oy + pt[2]
                             grid[x][y] = true
 
-                            mdHoles[part] = mdHoles[part] or {}
-                            mdHoles[part][x] = mdHoles[part][x] or {}
-                            mdHoles[part][x][y] = true
+                            mdHoles[part].xy[x] = mdHoles[part].xy[x] or {}
+                            mdHoles[part].xy[x][y] = true
                         end
                     end
                 end
