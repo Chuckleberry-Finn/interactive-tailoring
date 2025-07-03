@@ -1,22 +1,44 @@
 local pieceHandler = {}
 
 pieceHandler.pieceTypes = {
-    long = {{0, 0}, {1, 0}, {2, 0}, {3, 0}},
-    square = {{0, 0}, {1, 0}, {0, 1}, {1, 1}},
-    tee = {{0, 0}, {1, 0}, {2, 0}, {1, 1}},
-    ess = {{1, 0}, {2, 0}, {0, 1}, {1, 1}},
-    zee = {{0, 0}, {1, 0}, {1, 1}, {2, 1}},
-    jay = {{0, 0}, {0, 1}, {1, 1}, {2, 1}},
-    ell = {{2, 0}, {0, 1}, {1, 1}, {2, 1}},
+    long = { id = "long",
+        xy = { { 0, 0 }, { 1, 0 }, { 2, 0 }, { 3, 0 } },
+    },
+
+    square = { id = "square",
+        xy = { { 0, 0 }, { 1, 0 }, { 0, 1 }, { 1, 1 } },
+    },
+
+    tee = { id = "tee",
+        xy = { { 0, 0 }, { 1, 0 }, { 2, 0 }, { 1, 1 } },
+    },
+
+    ess = { id = "ess",
+        xy = { { 1, 0 }, { 2, 0 }, { 0, 1 }, { 1, 1 } },
+    },
+
+    zee = { id = "zee",
+        xy = { { 0, 0 }, { 1, 0 }, { 1, 1 }, { 2, 1 } },
+    },
+
+    jay = { id = "jay",
+        xy = { { 0, 0 }, { 0, 1 }, { 1, 1 }, { 2, 1 } },
+    },
+
+    ell = { id = "ell",
+        xy = { { 2, 0 }, { 0, 1 }, { 1, 1 }, { 2, 1 } },
+    },
 }
 
 pieceHandler.pieceTypes.index = false
-
+pieceHandler.pieceTextures = {}
 
 function pieceHandler.buildPieceTypeIndex()
     if pieceHandler.pieceTypes.index then return end
     pieceHandler.pieceTypes.index = {}
+
     for id,_ in pairs(pieceHandler.pieceTypes) do
+        table.insert(pieceHandler.pieceTextures, getTexture("media/textures/"..id.."_piece.png"))
         table.insert(pieceHandler.pieceTypes.index, id)
     end
 end
@@ -30,11 +52,11 @@ end
 
 function pieceHandler.rotate(piece)
     local rotated = {}
-    for i, cell in ipairs(piece) do
+    for i, cell in ipairs(piece.xy) do
         local x, y = cell[1], cell[2]
         table.insert(rotated, {y, -x})
     end
-    return rotated
+    piece.xy = rotated
 end
 
 
