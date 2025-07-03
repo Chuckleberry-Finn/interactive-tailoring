@@ -117,9 +117,10 @@ function interactiveTailoringUI:doContextMenu(part, x, y)
     -- you need thread and needle
     local thread = self.thread
     local needle = self.needle
-    local fabric1 = self.player:getInventory():getItemFromType("RippedSheets", true, true)
-    local fabric2 = self.player:getInventory():getItemFromType("DenimStrips", true, true)
-    local fabric3 = self.player:getInventory():getItemFromType("LeatherStrips", true, true)
+
+    local fabric1 = (self.rippedSheets:size() > 0) and self.rippedSheets:get(0)
+    local fabric2 = (self.denimStrips:size() > 0) and self.denimStrips:get(0)
+    local fabric3 = (self.leatherStrips:size() > 0) and self.leatherStrips:get(0)
 
     -- Require a needle to remove a patch.  Maybe scissors or a knife instead?
     local patch = self.clothing:getPatchType(part)
@@ -201,9 +202,10 @@ function interactiveTailoringUI:doDrawItem(y, item, alt)
         self:drawText(getText("IGUI_garment_Hole"), 10, y, br,bg,bb, 1, UIFont.Small)
     end
 
-    if self.parent.clothing:getBloodlevelForPart(part) > 0 then
+    local bloodLevelForPart = self.parent.clothing:getBloodlevelForPart(part)
+    if bloodLevelForPart > 0 then
         y = y + self.parent.fontSmallHgt
-        self:drawText(getText("IGUI_garment_Blood") .. round(self.parent.clothing:getBloodlevelForPart(part) * 100, 0) .. "%", 10, y, br,bg,bb, 1, UIFont.Small)
+        self:drawText(getText("IGUI_garment_Blood") .. round(bloodLevelForPart * 100, 0) .. "%", 10, y, br,bg,bb, 1, UIFont.Small)
     end
 
     local patch = self.parent.clothing:getPatchType(part)
@@ -416,6 +418,8 @@ function interactiveTailoringUI:prerender()
 
 
     ---sidebar
+    self:fetchMaterials()
+
     local sidebarX = (self.padding*2)+(self.gridW*self.gridScale)
     for _x=0, 3-1 do
         for _y=0, self.gridH-1 do
@@ -534,6 +538,19 @@ function interactiveTailoringUI:fetchItem(forThis, type,tag)
     if self[forThis] and self[forThis]:isInPlayerInventory() then return end
     if (not type and not tag) then self[forThis] = false return end
     self[forThis] = self.player:getInventory():getItemFromType(type, true, true) or self.player:getInventory():getFirstTagRecurse(tag) or false
+end
+
+
+function interactiveTailoringUI:fetchMaterials()
+    ---@type ItemContainer
+    local inv = self.player:getInventory()
+    local cap = inv:getCapacityWeight()
+    if self.inventoryCheck == cap then return end
+    self.inventoryCheck = cap
+
+    self.rippedSheets = inv:getItemsFromType("RippedSheets")
+    self.denimStrips = inv:getItemsFromType("DenimStrips")
+    self.leatherStrips = inv:getItemsFromType("LeatherStrips")
 end
 
 
@@ -701,6 +718,8 @@ function interactiveTailoringUI:new(player, clothing)
     o.player = player
     o.clothing = clothing
     o.title = clothing:getDisplayName()
+
+    o.inventoryCheck = 0
 
     o:fetchItem("thread", "Thread", "Thread")
     o:fetchItem("needle", "Needle", "SewingNeedle")
