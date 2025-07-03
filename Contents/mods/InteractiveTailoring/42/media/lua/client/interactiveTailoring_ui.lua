@@ -240,12 +240,10 @@ function interactiveTailoringUI:initialise()
 
     self:setResizable(false)
 
-    local tbh = self:titleBarHeight()
-    local headerHeight = self.gridScale*3
-    local gridX = (self.padding*2)+2
-    local gridY = (self.padding*3)+headerHeight+tbh+self.padding+2+self.fontSmallHgt
-    local gridW = (self.gridW*self.gridScale)-(self.padding*2)-4
-    local gridH = (self.gridH*self.gridScale)-(self.padding*3)-self.fontSmallHgt-4
+    local gridX = self.gridX + self.padding + 2
+    local gridY = self.gridY + (self.padding*2) + self.fontSmallHgt + 2
+    local gridW = self.gridW - (self.padding*2) - 4
+    local gridH = self.gridH - (self.padding*3) - self.fontSmallHgt - 4
 
     self.coveredParts = ISScrollingListBox:new(gridX, gridY, gridW, gridH)
     self.coveredParts:initialise()
@@ -360,24 +358,21 @@ function interactiveTailoringUI:drawClothingInfo(x,y,w,h)
 end
 
 
+function interactiveTailoringUI:onMouseMove(dx, dy)
+    ISCollapsableWindow.onMouseMove(self, dx, dy)
+end
+
+
 function interactiveTailoringUI:prerender()
     ISCollapsableWindow.prerender(self)
 
     self.coveredParts:setVisible(false)
 
-    local tbh = self:titleBarHeight()
-    local headerHeight = self.gridScale*3
-
     ---fabric
-    local gridX = self.padding
-    local gridY = (self.padding*2)+headerHeight+tbh
-    local gridW = (self.gridW*self.gridScale)
-    local gridH = (self.gridH*self.gridScale)
-
-    for _x=0, self.gridW-1 do
-        for _y=0, self.gridH-1 do
+    for _x=0, self.gridSizeW-1 do
+        for _y=0, self.gridSizeH-1 do
             self:drawTextureScaled(self.fabricTexture,
-                    self.padding + (self.gridScale*_x), gridY + (_y*self.gridScale),
+                    self.padding + (self.gridScale*_x), self.gridY + (_y*self.gridScale),
                     self.gridScale, self.gridScale,
                     self.clothing:getA(), self.clothing:getR(), self.clothing:getG(), self.clothing:getB())
         end
@@ -400,11 +395,11 @@ function interactiveTailoringUI:prerender()
                             if patch then
                                 local color = self.patchColor[patchType]
                                 self:drawTextureScaled(self.fabricTexture,
-                                        self.padding + (self.gridScale*(_x-1)), gridY + ((_y-1)*self.gridScale),
+                                        self.padding + (self.gridScale*(_x-1)), self.gridY + ((_y-1)*self.gridScale),
                                         self.gridScale, self.gridScale, 1, color.r, color.g, color.b)
                             else
                                 self:drawTextureScaled(self.holeTexture,
-                                        self.padding + (self.gridScale*(_x-1))-2, gridY + ((_y-1)*self.gridScale)-2,
+                                        self.padding + (self.gridScale*(_x-1))-2, self.gridY + ((_y-1)*self.gridScale)-2,
                                         self.gridScale+4, self.gridScale+4, 1, 1, 1, 1)
                             end
                         end
@@ -414,31 +409,31 @@ function interactiveTailoringUI:prerender()
         end
     end
 
-    self:drawRectBorder(gridX-2, gridY-2, gridW+4, gridH+4, self.toggleClothingInfo and 0.8 or 0.4, 1, 1, 1)
+    self:drawRectBorder(self.gridX-2, self.gridY-2, self.gridW+4, self.gridH+4, self.toggleClothingInfo and 0.8 or 0.4, 1, 1, 1)
 
 
     ---sidebar
     self:fetchMaterials()
 
-    local sidebarX = (self.padding*2)+(self.gridW*self.gridScale)
+    local sidebarX = (self.padding*2)+(self.gridSizeW*self.gridScale)
     for _x=0, 3-1 do
-        for _y=0, self.gridH-1 do
+        for _y=0, self.gridSizeH-1 do
 
             self:drawRect(
-                    sidebarX + (self.gridScale*_x)+1, gridY + (_y*self.gridScale)+1,
+                    sidebarX + (self.gridScale*_x)+1, self.gridY + (_y*self.gridScale)+1,
                     self.gridScale-2, self.gridScale-2,
                     0.3, 0.3, 0.3, 0.3)
         end
     end
-    self:drawRectBorder(sidebarX-2, gridY-2, (3*self.gridScale)+4, self.gridH*self.gridScale+4, 0.9, 0.5, 0.5, 0.5)
+    self:drawRectBorder(sidebarX-2, self.gridY-2, (3*self.gridScale)+4, self.gridSizeH*self.gridScale+4, 0.9, 0.5, 0.5, 0.5)
 
 
     ---header
-    self:drawRectBorder(self.padding, self.padding+tbh, self:getWidth()-(self.padding*2), headerHeight, 0.9, 0.5, 0.5, 0.5)
+    self:drawRectBorder(self.padding, self.padding+self.tbh, self:getWidth()-(self.padding*2), self.headerHeight, 0.9, 0.5, 0.5, 0.5)
 
     ---clothing
-    local clothingX = self.padding+((self.gridW/2)*self.gridScale)-(self.clothingUI.iW/2)
-    local clothingY = self.padding+tbh+(self.clothingUI.iH/2)
+    local clothingX = self.padding + (((self.gridSizeW/2)+0.5)*self.gridScale) - (self.clothingUI.iW/2)
+    local clothingY = self.padding + (self.tbh*1.6) + (self.clothingUI.iH/2)
 
     if not self.mouseOverZones.clothing then
         self.mouseOverZones.clothing = { x=clothingX-2, y=clothingY-2, w=self.clothingUI.iW+4, h=self.clothingUI.iH+4 }
@@ -463,11 +458,12 @@ function interactiveTailoringUI:prerender()
 
     local bar_hgt = 8
     local fnt_hgt = self.fontSmallHgt
-    local barY = (self.padding*1.5)+tbh
+    local barY = (self.padding*1.5)+self.tbh
     local barW = 120
 
-    self:drawText(getText("IGUI_invpanel_Condition"), self.padding*2, barY, 1, 1, 1, 0.9, UIFont.Small)
-    self:drawBar(self.padding*2, barY+fnt_hgt, barW, bar_hgt, self.clothing:getCondition() / self.clothing:getConditionMax(), true)
+    local cndFraction = self.clothing:getCondition()/self.clothing:getConditionMax()
+    self:drawText(getText("IGUI_invpanel_Condition"), self.padding*2, barY, 1, cndFraction==0 and 0 or 1, cndFraction==0 and 0 or 1, 0.9, UIFont.Small)
+    self:drawBar(self.padding*2, barY+fnt_hgt, barW, bar_hgt, cndFraction, true)
 
     barY = barY+bar_hgt+fnt_hgt+(self.padding/2.5)
 
@@ -487,10 +483,10 @@ function interactiveTailoringUI:prerender()
     if self.toggleClothingInfo or (x >= clothingZone.x and x <= clothingZone.x+clothingZone.w and y >= clothingZone.y and y <= clothingZone.y+clothingZone.h) then
 
         self:drawTextureScaled(self.pinButtonTexture,
-                clothingZone.x + ((clothingZone.w-(tbh-2))/2) , clothingZone.y + ((clothingZone.h-(tbh-2))/2), tbh-2, tbh-2,
+                clothingZone.x + ((clothingZone.w-(self.tbh-2))/2) , clothingZone.y + ((clothingZone.h-(self.tbh-2))/2), self.tbh-2, self.tbh-2,
                 self.toggleClothingInfo and 0.9 or 0.6, 1, 1, 1)
 
-        self:drawClothingInfo(gridX, gridY, gridW, gridH)
+        self:drawClothingInfo(self.gridX, self.gridY, self.gridW, self.gridH)
     end
 end
 
@@ -544,9 +540,9 @@ end
 function interactiveTailoringUI:fetchMaterials()
     ---@type ItemContainer
     local inv = self.player:getInventory()
-    local cap = inv:getCapacityWeight()
-    if self.inventoryCheck == cap then return end
-    self.inventoryCheck = cap
+    local contentWeight = inv:getContentsWeight()
+    if self.inventoryCheck == contentWeight then return end
+    self.inventoryCheck = contentWeight
 
     self.rippedSheets = inv:getItemsFromType("RippedSheets")
     self.denimStrips = inv:getItemsFromType("DenimStrips")
@@ -571,9 +567,9 @@ function interactiveTailoringUI:getHoles()
     local mdHoles = md.interactiveTailoring.holes
 
     local grid = {}
-    for x = 1, self.gridW do
+    for x = 1, self.gridSizeW do
         grid[x] = {}
-        for y = 1, self.gridH do
+        for y = 1, self.gridSizeH do
             grid[x][y] = false
         end
     end
@@ -601,8 +597,8 @@ function interactiveTailoringUI:getHoles()
 
             while attempts > 0 and not validPlacement do
                 attempts = attempts - 1
-                local ox = ZombRand(self.gridW - maxX) + 1
-                local oy = ZombRand(self.gridH - maxY) + 1
+                local ox = ZombRand(self.gridSizeW - maxX) + 1
+                local oy = ZombRand(self.gridSizeH - maxY) + 1
 
                 local overlaps = false
                 for _, pt in ipairs(piece) do
@@ -638,32 +634,36 @@ end
 
 local setBodyPartActionForPlayer_Orig = ISGarmentUI.setBodyPartActionForPlayer
 function ISGarmentUI.setBodyPartActionForPlayer(playerObj, bodyPart, action, jobType, args)
-    setBodyPartActionForPlayer_Orig(playerObj, bodyPart, action, jobType, args)
+
     if not playerObj or playerObj:isDead() then return end
     if not playerObj:isLocalPlayer() then return end
-    local garmentUI = interactiveTailoringUI.instance
-    if not garmentUI then return end
-    if args then
-        args.jobType = jobType
-        args.delta = action:getJobDelta()
+    local ui = interactiveTailoringUI.instance
+    if ui then
+        if args then
+            args.jobType = jobType
+            args.delta = action:getJobDelta()
+        end
+        ui:setBodyPartAction(bodyPart, args)
     end
-    garmentUI:setBodyPartAction(bodyPart, args)
+    setBodyPartActionForPlayer_Orig(playerObj, bodyPart, action, jobType, args)
 end
+
 
 local setOtherActionForPlayer_Orig = ISGarmentUI.setOtherActionForPlayer
 function ISGarmentUI.setOtherActionForPlayer(playerObj, bodyPart, action)
-    setOtherActionForPlayer_Orig(playerObj, bodyPart, action)
     if not playerObj or playerObj:isDead() then return end
     if not playerObj:isLocalPlayer() then return end
-    local garmentUI = interactiveTailoringUI.instance
-    if not garmentUI then return end
-    garmentUI:setBodyPartForAction(action, bodyPart)
+    local ui = interactiveTailoringUI.instance
+    if ui then ui:setBodyPartForAction(action, bodyPart) end
+    setOtherActionForPlayer_Orig(playerObj, bodyPart, action)
 end
+
 
 function interactiveTailoringUI:setBodyPartAction(bodyPart, args)
     self.bodyPartAction = self.bodyPartAction or {}
     self.bodyPartAction[bodyPart] = args
 end
+
 
 function interactiveTailoringUI.setBodyPartForLastAction(playerObj, bodyPart)
     if not playerObj or playerObj:isDead() then return end
@@ -694,23 +694,30 @@ end
 ---@param clothing InventoryItem|Clothing
 function interactiveTailoringUI:new(player, clothing)
 
-    local gridW, gridH, gridScale = 10, 11, 32--px
+    local gridSizeW, gridSizeH, gridScale = 10, 11, 32--px
     local padding = 10
 
     local screenW, screenH = getCore():getScreenWidth(), getCore():getScreenHeight()
 
-    local w = ((padding*3) + (gridW+3)*gridScale)
-    local h = ((padding*3) + (gridH+3)*gridScale) + ISCollapsableWindow.TitleBarHeight()
+    local w = ((padding*3) + (gridSizeW+3)*gridScale)
+    local h = ((padding*3) + (gridSizeH+3)*gridScale) + ISCollapsableWindow.TitleBarHeight()
 
     local x, y = (screenW-w)/2, (screenH-h)/2
     local o = ISCollapsableWindow.new(self, x, y, w, h)
     setmetatable(o, self)
     self.__index = self
 
-    o.gridW = gridW
-    o.gridH = gridH
+    o.gridSizeW = gridSizeW
+    o.gridSizeH = gridSizeH
     o.gridScale = gridScale
     o.padding = padding
+
+    o.tbh = o:titleBarHeight()
+    o.headerHeight = o.gridScale*3
+    o.gridX = o.padding
+    o.gridY = (o.padding*2)+o.headerHeight+o.tbh
+    o.gridW = (o.gridSizeW*o.gridScale)
+    o.gridH = (o.gridSizeH*o.gridScale)
 
     o.mouseOverZones = {}
     o.toggleClothingInfo = false
