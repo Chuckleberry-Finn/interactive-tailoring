@@ -515,6 +515,7 @@ end
 
 
 function interactiveTailoringUI:close()
+    interactiveTailoringUI.instance = nil
     self:removeFromUIManager()
 end
 
