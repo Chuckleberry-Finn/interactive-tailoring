@@ -387,10 +387,11 @@ function interactiveTailoringUI:prerender()
         local itModData = self.clothing:getModData().interactiveTailoring
         local mdHoles = itModData and itModData.holes
         if mdHoles then
-            for part,xs in pairs(mdHoles) do
-                for _x,ys in pairs(xs) do
+            for part,hole in pairs(mdHoles) do
+                local xy = hole.xy
+                for _x,ys in pairs(xy) do
                     for _y,_ in pairs(ys) do
-                        if mdHoles[part][_x][_y] then
+                        if mdHoles[part].xy[_x][_y] then
 
                             local patch = self.clothing:getPatchType(part)
                             local patchType = patch and patch:getFabricType()
@@ -588,10 +589,14 @@ function interactiveTailoringUI:getHoles()
         local hole = visual:getHole(part) + visual:getBasicPatch(part) + visual:getDenimPatch(part) + visual:getLeatherPatch(part)
 
         if hole > 0 then
+
+            --todo remove this later
+            if mdHoles[part] and (not mdHoles[part].xy) then mdHoles[part] = nil end
+
             local piece = mdHoles[part] or pieceHandler.pickRandomType()
 
             local maxX, maxY = 0, 0
-            for _, pt in ipairs(piece) do
+            for _, pt in ipairs(piece.xy) do
                 if pt[1] and pt[2] then
                     maxX = math.max(maxX, pt[1])
                     maxY = math.max(maxY, pt[2])
@@ -607,7 +612,7 @@ function interactiveTailoringUI:getHoles()
                 local oy = ZombRand(self.gridSizeH - maxY) + 1
 
                 local overlaps = false
-                for _, pt in ipairs(piece) do
+                for _, pt in ipairs(piece.xy) do
                     if pt[1] and pt[2] then
                         local x = ox + pt[1]
                         local y = oy + pt[2]
@@ -620,7 +625,7 @@ function interactiveTailoringUI:getHoles()
 
                 if not overlaps then
                     validPlacement = true
-                    for _, pt in ipairs(piece) do
+                    for _, pt in ipairs(piece.xy) do
                         if pt[1] and pt[2] then
                             local x = ox + pt[1]
                             local y = oy + pt[2]
