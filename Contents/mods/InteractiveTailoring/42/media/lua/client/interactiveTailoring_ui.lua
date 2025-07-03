@@ -1,6 +1,8 @@
 require "ISUI/ISCollapsableWindow.lua"
 ---ISGarmentUI
 
+local pieceHandler = require "interactiveTailoring_pieceHandler.lua"
+
 interactiveTailoringUI = ISCollapsableWindow:derive("interactiveTailoringUI")
 interactiveTailoringUI.font = getTextManager():getFontHeight(UIFont.NewMedium)
 
@@ -143,6 +145,34 @@ function interactiveTailoringUI:fetchItem(forThis, type,tag)
 end
 
 
+---also generates interactive-holes for the items
+function interactiveTailoringUI:getHoles()
+    if not self.clothing then return end
+    ---@type Clothing|InventoryItem
+    local c = self.clothing
+    local cHoles = c:getHolesNumber()
+    if cHoles == 0 then return 0 end
+
+    local md = c:getModData()
+    md.interactiveTailoring = md.interactiveTailoring or {}
+    md.interactiveTailoring.holes = md.interactiveTailoring.holes or {}
+    local mdHoles = md.interactiveTailoring.holes
+
+    print("getHolesNumber:", c:getHolesNumber())
+    local visual = c:getVisual()
+    local coveredParts = c:getCoveredParts()
+    for i=0, coveredParts:size()-1 do
+        local part = coveredParts:get(i)
+        local hole = visual:getHole(part)
+        print("hole: ", part, " (",hole,")")
+
+        local piece = pieceHandler.pickRandomType()
+        self.holes[part] = true
+        mdHoles[part] = piece
+    end
+end
+
+
 interactiveTailoringUI.failThread = getScriptManager():getItem("Thread"):getNormalTexture()
 interactiveTailoringUI.failNeedle = getScriptManager():getItem("Needle"):getNormalTexture()
 interactiveTailoringUI.failScissors = getScriptManager():getItem("Scissors"):getNormalTexture()
@@ -180,12 +210,16 @@ function interactiveTailoringUI:new(player, clothing)
     o.threadFontHeight = getTextManager():getFontHeight(o.threadFont)
 
     o.holes = {}
+    o:getHoles()
+
+    --[[ ---debug
     for _x=1, o.gridW do
         o.holes[_x] = {}
         for _y=1, o.gridH do
             o.holes[_x][_y] = (ZombRand(100) <= 2)
         end
     end
+    --]]
 
     o.clothingUI = {}
     o.clothingUI.icon = clothing:getTex()
@@ -197,7 +231,7 @@ function interactiveTailoringUI:new(player, clothing)
     o.borderColor = {r=0.4, g=0.4, b=0.4, a=1}
     o.backgroundColor = {r=0, g=0, b=0, a=0.8}
 
-    print("ITUI:  p:",player, "  c:",clothing)
+    --print("ITUI:  p:",player, "  c:",clothing)
 
     return o
 end
