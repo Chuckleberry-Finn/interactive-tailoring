@@ -1,5 +1,5 @@
 require "ISUI/ISCollapsableWindow.lua"
----ISGarmentUI
+require "ISUI/ISGarmentUI.lua"
 
 local pieceHandler = require "interactiveTailoring_pieceHandler.lua"
 
@@ -8,6 +8,17 @@ interactiveTailoringUI.fontHgt = getTextManager():getFontHeight(UIFont.NewMedium
 interactiveTailoringUI.fontSmallHgt = getTextManager():getFontHeight(UIFont.NewSmall)
 interactiveTailoringUI.fabricTexture = getTexture("media/textures/fabric.png")
 interactiveTailoringUI.holeTexture = getTexture("media/textures/hole.png")
+
+interactiveTailoringUI.threadFont = UIFont.NewLarge
+interactiveTailoringUI.threadFontHeight = getTextManager():getFontHeight(interactiveTailoringUI.threadFont)
+
+interactiveTailoringUI.failThread = getScriptManager():getItem("Thread"):getNormalTexture()
+interactiveTailoringUI.failNeedle = getScriptManager():getItem("Needle"):getNormalTexture()
+interactiveTailoringUI.failScissors = getScriptManager():getItem("Scissors"):getNormalTexture()
+interactiveTailoringUI.failColor = {a=0.5,r=1,g=0.1,b=0.1}
+
+interactiveTailoringUI.ghs = "<GHC>"
+interactiveTailoringUI.bhs = "<BHC>"
 
 interactiveTailoringUI.patchColor = {
     { r = 0.855, g = 0.843, b = 0.749 },--cotton
@@ -21,9 +32,238 @@ function interactiveTailoringUI:update()
 end
 
 
+function interactiveTailoringUI:onBodyPartListRightMouseUp(x, y)
+    local row = self:rowAt(x, y)
+    if row < 1 or row > #self.items then return end
+    self.parent:doContextMenu(self.items[row].item, getMouseX(), getMouseY())
+end
+
+
+function interactiveTailoringUI:getPaddablePartsNumber(clothing, parts)
+    local count = 0
+
+    for i=1, #parts do
+        local part = parts[i]
+        local hole = clothing:getVisual():getHole(part) > 0
+        local patch = clothing:getPatchType(part)
+        if(hole == false and patch == nil) then
+            count = count + 1
+        end
+    end
+
+    return count
+end
+
+
+function interactiveTailoringUI:doPatch(fabric, thread, needle, part, context, submenu)
+    if not self.clothing:getFabricType() then
+        return
+    end
+
+    local hole = self.clothing:getVisual():getHole(part) > 0
+    local patch = self.clothing:getPatchType(part)
+
+    local text
+    local allText
+
+    if hole then
+        text = getText("ContextMenu_PatchHole")
+        allText = getText("ContextMenu_PatchAllHoles") .. fabric:getDisplayName()
+    elseif not patch then
+        text = getText("ContextMenu_AddPadding")
+        allText = getText("ContextMenu_AddPaddingAll") .. fabric:getDisplayName()
+    else
+        error "patch ~= nil"
+    end
+
+    if not submenu then -- after the 2nd iteration we have a submenu, we simply add our different fabric to it
+        local option = context:addOption(text)
+        submenu = context:getNew(context)
+        context:addSubMenu(option, submenu)
+    end
+
+    local option = submenu:addOption(fabric:getDisplayName(), self.player, ISInventoryPaneContextMenu.repairClothing, self.clothing, part, fabric, thread, needle)
+    local tooltip = ISInventoryPaneContextMenu.addToolTip()
+    if self.clothing:canFullyRestore(self.player, part, fabric) then
+        tooltip.description = getText("IGUI_perks_Tailoring") .. " :" .. self.player:getPerkLevel(Perks.Tailoring) .. " <LINE>" .. self.ghs .. getText("Tooltip_FullyRestore")
+    else
+        tooltip.description = getText("IGUI_perks_Tailoring") .. " :" .. self.player:getPerkLevel(Perks.Tailoring) .. " <LINE>" .. self.ghs .. getText("Tooltip_ScratchDefense")  .. " +" .. Clothing.getScratchDefenseFromItem(self.player, fabric) .. " <LINE> " .. getText("Tooltip_BiteDefense") .. " +" .. Clothing.getBiteDefenseFromItem(self.player, fabric)
+    end
+    option.toolTip = tooltip
+
+    -- Patch/Add pad all
+    local allOption
+    local allTooltip = ISInventoryPaneContextMenu.addToolTip()
+
+    if(self.player:getInventory():getItemCount(fabric:getType(), true) > 1) then
+        if hole and (self.clothing:getHolesNumber() > 1) then
+            allOption = submenu:addOption(allText, self.player, ISInventoryPaneContextMenu.repairAllClothing, self.clothing, self.parts, fabric, thread, needle, true)
+            allTooltip.description = getText("Tooltip_PatchAllHoles") .. fabric:getDisplayName()
+            allOption.toolTip = allTooltip
+        elseif not hole and not patch and (self:getPaddablePartsNumber(self.clothing, self.parts) > 1) then
+            allOption = submenu:addOption(allText, self.player, ISInventoryPaneContextMenu.repairAllClothing, self.clothing, self.parts, fabric, thread, needle, false)
+            allTooltip.description = getText("Tooltip_AddPaddingToAll") .. fabric:getDisplayName()
+            allOption.toolTip = allTooltip
+        end
+    end
+
+    return submenu
+end
+
+
+function interactiveTailoringUI:doContextMenu(part, x, y)
+    local context = ISContextMenu.get(self.player:getPlayerNum(), x, y)
+
+    -- you need thread and needle
+    local thread = self.thread
+    local needle = self.needle
+    local fabric1 = self.player:getInventory():getItemFromType("RippedSheets", true, true)
+    local fabric2 = self.player:getInventory():getItemFromType("DenimStrips", true, true)
+    local fabric3 = self.player:getInventory():getItemFromType("LeatherStrips", true, true)
+
+    -- Require a needle to remove a patch.  Maybe scissors or a knife instead?
+    local patch = self.clothing:getPatchType(part)
+    if patch then
+        -- Remove specific patch
+        local removeOption = context:addOption(getText("ContextMenu_RemovePatch"), self.player, ISInventoryPaneContextMenu.removePatch, self.clothing, part, needle)
+        local tooltip = ISInventoryPaneContextMenu.addToolTip()
+        removeOption.toolTip = tooltip
+
+        -- Remove all patches
+        local patchesCount = self.clothing:getPatchesNumber()
+        local removeAllOption
+        local removeAllTooltip
+        if (patchesCount > 1) then
+            removeAllOption = context:addOption(getText("ContextMenu_RemoveAllPatches"), self.player, ISInventoryPaneContextMenu.removeAllPatches, self.clothing, self.parts, needle)
+            removeAllTooltip = ISInventoryPaneContextMenu.addToolTip()
+            removeAllOption.toolTip = removeAllTooltip
+        end
+
+        if needle then
+            tooltip.description = getText("Tooltip_GetPatchBack", ISRemovePatch.chanceToGetPatchBack(self.player)) .. " <LINE>" .. self.bhs .. getText("Tooltip_ScratchDefense")  .. " -" .. patch:getScratchDefense() .. " <LINE> " .. getText("Tooltip_BiteDefense") .. " -" .. patch:getBiteDefense()
+            if(removeAllTooltip ~= nil) then
+                removeAllTooltip.description = getText("Tooltip_GetPatchesBack", ISRemovePatch.chanceToGetPatchBack(self.player)) .. " <LINE>" .. self.bhs .. getText("Tooltip_ScratchDefense")  .. " -" .. (patch:getScratchDefense() * patchesCount) .. " <LINE> " .. getText("Tooltip_BiteDefense") .. " -" .. (patch:getBiteDefense() * patchesCount)
+            end
+        else
+            tooltip.description = getText("ContextMenu_CantRemovePatch")
+            removeOption.notAvailable = true
+            if(removeAllTooltip ~= nil) then
+                removeAllTooltip.description = getText("ContextMenu_CantRemovePatch")
+                removeAllOption.notAvailable = true
+            end
+        end
+        return context
+    end
+
+    -- Cannot patch without thread, needle and fabric
+    if not thread or not needle or (not fabric1 and not fabric2 and not fabric3) then
+        local patchOption = context:addOption(getText("ContextMenu_Patch"))
+        patchOption.notAvailable = true
+        local tooltip = ISInventoryPaneContextMenu.addToolTip()
+        tooltip.description = getText("ContextMenu_CantRepair")
+        patchOption.toolTip = tooltip
+        return context
+    end
+
+    local submenu
+    local allSubmenu
+    if fabric1 then
+        submenu = self:doPatch(fabric1, thread, needle, part, context, submenu)
+    end
+    if fabric2 then
+        submenu = self:doPatch(fabric2, thread, needle, part, context, submenu)
+    end
+    if fabric3 then
+        submenu = self:doPatch(fabric3, thread, needle, part, context, submenu)
+    end
+
+    return context
+end
+
+
+function interactiveTailoringUI:doDrawItem(y, item, alt)
+    local part = item.item
+
+    if item.itemindex == self.mouseoverselected then
+        self:drawRect(0, y, self:getWidth(), item.height, 0.1, 1.0, 1.0, 1.0)
+    end
+
+    self:drawText(part:getDisplayName(), 0, y, 1, 1, 1, 1, UIFont.Small)
+    self:drawText(self.parent.clothing:getDefForPart(part, true, false) .. "%", self.parent.biteColumn - self.x, y, 1, 1, 1, 1, UIFont.Small)
+    self:drawText(self.parent.clothing:getDefForPart(part, false, false) .. "%", self.parent.scratchColumn - self.x, y, 1, 1, 1, 1, UIFont.Small)
+    self:drawText(self.parent.clothing:getDefForPart(part, false, true) .. "%", self.parent.bulletColumn - self.x, y, 1, 1, 1, 1, UIFont.Small)
+
+    local br,bg,bb = getCore():getBadHighlitedColor():getR(), getCore():getBadHighlitedColor():getG(), getCore():getBadHighlitedColor():getB()
+    local gr,gg,gb = getCore():getGoodHighlitedColor():getR(), getCore():getGoodHighlitedColor():getG(), getCore():getGoodHighlitedColor():getB()
+
+    if self.parent.clothing:getVisual():getHole(part) > 0 then
+        y = y + self.parent.fontSmallHgt
+        self:drawText(getText("IGUI_garment_Hole"), 10, y, br,bg,bb, 1, UIFont.Small)
+    end
+
+    if self.parent.clothing:getBloodlevelForPart(part) > 0 then
+        y = y + self.parent.fontSmallHgt
+        self:drawText(getText("IGUI_garment_Blood") .. round(self.parent.clothing:getBloodlevelForPart(part) * 100, 0) .. "%", 10, y, br,bg,bb, 1, UIFont.Small)
+    end
+
+    local patch = self.parent.clothing:getPatchType(part)
+    if patch then
+        y = y + self.parent.fontSmallHgt
+        self:drawText("- " .. getText("IGUI_TypeOfPatch", patch:getFabricTypeName()), 10, y, gr,gg,gb, 1, UIFont.Small)
+    end
+
+    local x = 10
+    local fgBar = {r=0.5, g=0.5, b=0.5, a=0.5}
+    local UI = self.parent
+    local bodyPartAction = UI.bodyPartAction and UI.bodyPartAction[part] or nil
+    if bodyPartAction then
+        y = y + self.parent.fontSmallHgt
+        self:drawProgressBar(x, y, self.width - 10 - x, self.parent.fontSmallHgt, bodyPartAction.delta, fgBar)
+        self:drawText(bodyPartAction.jobType, x + 4, y, 0.8, 0.8, 0.8, 1, UIFont.Small)
+    else
+        local actionQueue = ISTimedActionQueue.getTimedActionQueue(UI.player)
+        if actionQueue and actionQueue.queue and UI.actionToBodyPart and (UI.actionToBodyPart[actionQueue.queue[1]] == part) then
+            y = y + self.parent.fontSmallHgt
+            self:drawProgressBar(x, y, self.width - 10 - x, self.parent.fontSmallHgt, actionQueue.queue[1]:getJobDelta(), fgBar)
+            self:drawText(actionQueue.queue[1].jobType or "???", x + 4, y, 0.8, 0.8, 0.8, 1, UIFont.Small) -- jobType is a hack for CraftingUI and ISHealthPanel also
+        end
+    end
+
+    return y + self.parent.fontSmallHgt + self.parent.padding
+end
+
+
 function interactiveTailoringUI:initialise()
     ISCollapsableWindow.initialise(self)
+
     self:setResizable(false)
+
+    local tbh = self:titleBarHeight()
+    local headerHeight = self.gridScale*3
+    local gridX = (self.padding*2)+2
+    local gridY = (self.padding*3)+headerHeight+tbh+self.padding+2+self.fontSmallHgt
+    local gridW = (self.gridW*self.gridScale)-(self.padding*2)-4
+    local gridH = (self.gridH*self.gridScale)-(self.padding*3)-self.fontSmallHgt-4
+
+    self.coveredParts = ISScrollingListBox:new(gridX, gridY, gridW, gridH)
+    self.coveredParts:initialise()
+    self.coveredParts:instantiate()
+    self.coveredParts.itemheight = 128
+    self.coveredParts.drawBorder = false
+    self.coveredParts.backgroundColor.a = 0
+    self.coveredParts.doDrawItem = interactiveTailoringUI.doDrawItem
+    self.coveredParts.onRightMouseUp = interactiveTailoringUI.onBodyPartListRightMouseUp
+    self:addChild(self.coveredParts)
+
+    self:calcColumnWidths(gridX+self.padding)
+
+    for i=0, self.clothing:getCoveredParts():size() - 1 do
+        local part = self.clothing:getCoveredParts():get(i)
+        if part then
+            table.insert(self.parts, part)
+            self.coveredParts:addItem("part", part)
+        end
+    end
 end
 
 
@@ -39,14 +279,99 @@ function interactiveTailoringUI:createChildren()
 end
 
 
-function interactiveTailoringUI:render()
-    ISCollapsableWindow.render(self)
+function interactiveTailoringUI:drawTools(x,y)
+    ---thread
+    local threadX = x+(self.gridScale*0.66)
+    self:fetchItem("thread", "Thread", "Thread")
+    if self.thread then
+        self:drawRectBorder(threadX-2, y-2, self.clothingUI.iW+4, self.clothingUI.iH+4, 0.7, 0.5, 0.5, 0.5)
+        self:drawBar(threadX, y, self.clothingUI.iW, self.clothingUI.iH, self.thread:getCurrentUsesFloat(), true, true)
+        self:drawItemIcon(self.thread, threadX, y, 1, self.clothingUI.iW, self.clothingUI.iH)
+    else
+        self:drawRectBorder(threadX-2, y-2, self.clothingUI.iW+4, self.clothingUI.iH+4,
+                self.failColor.a*0.66, self.failColor.r, self.failColor.g, self.failColor.b)
+        self:drawTexture(self.failThread, threadX, y, self.failColor.a, self.failColor.r, self.failColor.g, self.failColor.b)
+    end
+
+    ---needle
+    local needleX = threadX-(self.padding*2)-self.gridScale
+    self:fetchItem("needle", "Needle", "SewingNeedle")
+    if self.needle then
+        self:drawRectBorder(needleX-2, y-2, self.clothingUI.iW+4, self.clothingUI.iH+4, 0.7, 0.5, 0.5, 0.5)
+        self:drawItemIcon(self.needle, needleX, y, 1, self.clothingUI.iW, self.clothingUI.iH)
+    else
+        self:drawRectBorder(needleX-2, y-2, self.clothingUI.iW+4, self.clothingUI.iH+4,
+                self.failColor.a*0.66, self.failColor.r, self.failColor.g, self.failColor.b)
+        self:drawTexture(self.failNeedle, needleX, y, self.failColor.a, self.failColor.r, self.failColor.g, self.failColor.b)
+    end
+
+    ---scissors
+    local scissorsX = needleX-(self.padding*2)-self.gridScale
+
+    self:fetchItem("scissors", "Scissors", "Scissors")
+    if self.scissors then
+        self:drawRectBorder(scissorsX-2, y-2, self.clothingUI.iW+4, self.clothingUI.iH+4, 0.7, 0.5, 0.5, 0.5)
+        self:drawItemIcon(self.scissors, scissorsX, y, 1, self.clothingUI.iW, self.clothingUI.iH)
+    else
+        self:drawRectBorder(scissorsX-2, y-2, self.clothingUI.iW+4, self.clothingUI.iH+4,
+                self.failColor.a*0.66, self.failColor.r, self.failColor.g, self.failColor.b)
+        self:drawTexture(self.failScissors, scissorsX, y, self.failColor.a, self.failColor.r, self.failColor.g, self.failColor.b)
+    end
+end
+
+
+function interactiveTailoringUI:calcColumnWidths(x)
+    local partColumnWidth = 0
+    for i=1,BloodBodyPartType.MAX:index() do
+        local part = BloodBodyPartType.FromIndex(i-1)
+        local width = getTextManager():MeasureStringX(UIFont.Small, part:getDisplayName())
+        partColumnWidth = math.max(partColumnWidth, width)
+    end
+    local partSize = getTextManager():MeasureStringX(UIFont.Small, getText("IGUI_garment_BodyPart"))
+    local biteSize = getTextManager():MeasureStringX(UIFont.Small, getText("IGUI_health_Bite"))
+    local scratchSize = getTextManager():MeasureStringX(UIFont.Small, getText("IGUI_health_Scratch"))
+    local bulletSize = getTextManager():MeasureStringX(UIFont.Small, getText("IGUI_health_Bullet"))
+    partColumnWidth = math.max(partColumnWidth, partSize)
+    self.biteColumn = x + partColumnWidth + 10
+    self.scratchColumn = math.max(self.biteColumn + 10 + biteSize)
+    self.bulletColumn = math.max(self.scratchColumn + 10 + scratchSize)
+
+    local scrollbarWidth = 17
+    local listRight = self.bulletColumn + bulletSize + scrollbarWidth
+    --local progressWidth = self.progressWidthTotal + 20 * 2
+    --self:setWidth(math.max(listRight, progressWidth))
+end
+
+
+function interactiveTailoringUI:drawClothingInfo(x,y,w,h)
+    self:drawRect(x, y, w, h, 0.9, 0.1, 0.1, 0.1)
+
+    local columnX = x + self.padding
+    local columnY = y + self.padding
+
+    self.coveredParts:setVisible(true)
+
+    self:drawText(getText("IGUI_garment_BodyPart"), columnX, columnY, 1, 1, 1, 1, UIFont.Small)
+    self:drawText(getText("IGUI_health_Scratch"), self.scratchColumn, columnY, 1, 1, 1, 1, UIFont.Small)
+    self:drawText(getText("IGUI_health_Bite"), self.biteColumn, columnY, 1, 1, 1, 1, UIFont.Small)
+    self:drawText(getText("IGUI_health_Bullet"), self.bulletColumn, columnY, 1, 1, 1, 1, UIFont.Small)
+end
+
+
+function interactiveTailoringUI:prerender()
+    ISCollapsableWindow.prerender(self)
+
+    self.coveredParts:setVisible(false)
 
     local tbh = self:titleBarHeight()
     local headerHeight = self.gridScale*3
 
     ---fabric
+    local gridX = self.padding
     local gridY = (self.padding*2)+headerHeight+tbh
+    local gridW = (self.gridW*self.gridScale)
+    local gridH = (self.gridH*self.gridScale)
+
     for _x=0, self.gridW-1 do
         for _y=0, self.gridH-1 do
             self:drawTextureScaled(self.fabricTexture,
@@ -59,10 +384,6 @@ function interactiveTailoringUI:render()
     ---holes
     local cHoles = self.clothing:getHolesNumber()+self.clothing:getPatchesNumber()
     if cHoles > 0 then
-
-        if self.holes ~= cHoles then
-            --TODO: FETCH NEW HOLES
-        end
 
         local itModData = self.clothing:getModData().interactiveTailoring
         local mdHoles = itModData and itModData.holes
@@ -91,7 +412,8 @@ function interactiveTailoringUI:render()
         end
     end
 
-    self:drawRectBorder(self.padding-2, gridY-2, (self.gridW*self.gridScale)+4, (self.gridH*self.gridScale)+4, 0.9, 0.5, 0.5, 0.5)
+    self:drawRectBorder(gridX-2, gridY-2, gridW+4, gridH+4, self.toggleClothingInfo and 0.8 or 0.4, 1, 1, 1)
+
 
     ---sidebar
     local sidebarX = (self.padding*2)+(self.gridW*self.gridScale)
@@ -107,14 +429,32 @@ function interactiveTailoringUI:render()
     self:drawRectBorder(sidebarX-2, gridY-2, (3*self.gridScale)+4, self.gridH*self.gridScale+4, 0.9, 0.5, 0.5, 0.5)
 
 
-
     ---header
     self:drawRectBorder(self.padding, self.padding+tbh, self:getWidth()-(self.padding*2), headerHeight, 0.9, 0.5, 0.5, 0.5)
 
     ---clothing
     local clothingX = self.padding+((self.gridW/2)*self.gridScale)-(self.clothingUI.iW/2)
     local clothingY = self.padding+tbh+(self.clothingUI.iH/2)
-    self:drawRectBorder(clothingX-2, clothingY-2, self.clothingUI.iW+4, self.clothingUI.iH+4, 0.7, 0.5, 0.5, 0.5)
+
+    if not self.mouseOverZones.clothing then
+        self.mouseOverZones.clothing = { x=clothingX-2, y=clothingY-2, w=self.clothingUI.iW+4, h=self.clothingUI.iH+4 }
+    end
+
+    if not self.clothing:getFabricType() then
+        self:drawText(getText("IGUI_garment_CantRepair"),
+                clothingX, clothingY+self.padding+self.clothingUI.iH,
+                self.failColor.r, self.failColor.g, self.failColor.b, self.failColor.a*2, UIFont.Small)
+        self:drawRectBorder(
+                self.mouseOverZones.clothing.x, self.mouseOverZones.clothing.y,
+                self.mouseOverZones.clothing.w, self.mouseOverZones.clothing.h,
+                self.failColor.a*1.5, self.failColor.r, self.failColor.g, self.failColor.b)
+    else
+        self:drawRectBorder(
+                self.mouseOverZones.clothing.x, self.mouseOverZones.clothing.y,
+                self.mouseOverZones.clothing.w, self.mouseOverZones.clothing.h,
+                self.toggleClothingInfo and 0.8 or 0.3, 1, 1, 1)
+    end
+
     self:drawItemIcon(self.clothing, clothingX, clothingY, 1, self.clothingUI.iW, self.clothingUI.iH)
 
     local bar_hgt = 8
@@ -135,43 +475,18 @@ function interactiveTailoringUI:render()
     self:drawText(getText("IGUI_garment_GlbDirt"), self.padding*2, barY, 1, 1, 1, 0.9, UIFont.Small)
     self:drawBar(self.padding*2, barY+fnt_hgt, barW, bar_hgt, self.clothing:getDirtyness() / 100, false)
 
+    self:drawTools(sidebarX,clothingY)
 
-    ---thread
-    local threadX = sidebarX+(self.gridScale*0.66)
-    self:fetchItem("thread", "Thread", "Thread")
-    if self.thread then
-        self:drawRectBorder(threadX-2, clothingY-2, self.clothingUI.iW+4, self.clothingUI.iH+4, 0.7, 0.5, 0.5, 0.5)
-        self:drawBar(threadX, clothingY, self.clothingUI.iW, self.clothingUI.iH, self.thread:getCurrentUsesFloat(), true, true)
-        self:drawItemIcon(self.thread, threadX, clothingY, 1, self.clothingUI.iW, self.clothingUI.iH)
-    else
-        self:drawRectBorder(threadX-2, clothingY-2, self.clothingUI.iW+4, self.clothingUI.iH+4,
-                self.failColor.a*0.66, self.failColor.r, self.failColor.g, self.failColor.b)
-        self:drawTexture(self.failThread, threadX, clothingY, self.failColor.a, self.failColor.r, self.failColor.g, self.failColor.b)
-    end
+    ---draw tools or clothing info
+    local x,y = self:getMouseX(), self:getMouseY()
+    local clothingZone = self.mouseOverZones.clothing
+    if self.toggleClothingInfo or (x >= clothingZone.x and x <= clothingZone.x+clothingZone.w and y >= clothingZone.y and y <= clothingZone.y+clothingZone.h) then
 
-    ---needle
-    local needleX = threadX-(self.padding*2)-self.gridScale
-    self:fetchItem("needle", "Needle", "SewingNeedle")
-    if self.needle then
-        self:drawRectBorder(needleX-2, clothingY-2, self.clothingUI.iW+4, self.clothingUI.iH+4, 0.7, 0.5, 0.5, 0.5)
-        self:drawItemIcon(self.needle, needleX, clothingY, 1, self.clothingUI.iW, self.clothingUI.iH)
-    else
-        self:drawRectBorder(needleX-2, clothingY-2, self.clothingUI.iW+4, self.clothingUI.iH+4,
-                self.failColor.a*0.66, self.failColor.r, self.failColor.g, self.failColor.b)
-        self:drawTexture(self.failNeedle, needleX, clothingY, self.failColor.a, self.failColor.r, self.failColor.g, self.failColor.b)
-    end
+        self:drawTextureScaled(self.pinButtonTexture,
+                clothingZone.x + ((clothingZone.w-(tbh-2))/2) , clothingZone.y + ((clothingZone.h-(tbh-2))/2), tbh-2, tbh-2,
+                self.toggleClothingInfo and 0.9 or 0.6, 1, 1, 1)
 
-    ---scissors
-    local scissorsX = needleX-(self.padding*2)-self.gridScale
-
-    self:fetchItem("scissors", "Scissors", "Scissors")
-    if self.scissors then
-        self:drawRectBorder(scissorsX-2, clothingY-2, self.clothingUI.iW+4, self.clothingUI.iH+4, 0.7, 0.5, 0.5, 0.5)
-        self:drawItemIcon(self.scissors, scissorsX, clothingY, 1, self.clothingUI.iW, self.clothingUI.iH)
-    else
-        self:drawRectBorder(scissorsX-2, clothingY-2, self.clothingUI.iW+4, self.clothingUI.iH+4,
-                self.failColor.a*0.66, self.failColor.r, self.failColor.g, self.failColor.b)
-        self:drawTexture(self.failScissors, scissorsX, clothingY, self.failColor.a, self.failColor.r, self.failColor.g, self.failColor.b)
+        self:drawClothingInfo(gridX, gridY, gridW, gridH)
     end
 end
 
@@ -226,13 +541,12 @@ function interactiveTailoringUI:getHoles()
     if not self.clothing then return end
     ---@type Clothing|InventoryItem
     local c = self.clothing
-    local cHoles = c:getHolesNumber()
+    local cHoles = c:getHolesNumber()+c:getPatchesNumber()
     if cHoles == 0 then return 0 end
 
     self.holes = cHoles
 
     local md = c:getModData()
-    if md.interactiveTailoring and md.interactiveTailoring.holes then return md.interactiveTailoring.holes end
 
     md.interactiveTailoring = md.interactiveTailoring or {}
     md.interactiveTailoring.holes = md.interactiveTailoring.holes or {}
@@ -251,15 +565,17 @@ function interactiveTailoringUI:getHoles()
 
     for i = 0, coveredParts:size() - 1 do
         local part = coveredParts:get(i)
-        local hole = visual:getHole(part)
+        local hole = visual:getHole(part) + visual:getBasicPatch(part) + visual:getDenimPatch(part) + visual:getLeatherPatch(part)
 
         if hole > 0 then
-            local piece = pieceHandler.pickRandomType()
+            local piece = mdHoles[part] or pieceHandler.pickRandomType()
 
             local maxX, maxY = 0, 0
             for _, pt in ipairs(piece) do
-                maxX = math.max(maxX, pt[1])
-                maxY = math.max(maxY, pt[2])
+                if pt[1] and pt[2] then
+                    maxX = math.max(maxX, pt[1])
+                    maxY = math.max(maxY, pt[2])
+                end
             end
 
             local validPlacement = false
@@ -272,24 +588,28 @@ function interactiveTailoringUI:getHoles()
 
                 local overlaps = false
                 for _, pt in ipairs(piece) do
-                    local x = ox + pt[1]
-                    local y = oy + pt[2]
-                    if grid[x][y] then
-                        overlaps = true
-                        break
+                    if pt[1] and pt[2] then
+                        local x = ox + pt[1]
+                        local y = oy + pt[2]
+                        if grid[x][y] then
+                            overlaps = true
+                            break
+                        end
                     end
                 end
 
                 if not overlaps then
                     validPlacement = true
                     for _, pt in ipairs(piece) do
-                        local x = ox + pt[1]
-                        local y = oy + pt[2]
-                        grid[x][y] = true
+                        if pt[1] and pt[2] then
+                            local x = ox + pt[1]
+                            local y = oy + pt[2]
+                            grid[x][y] = true
 
-                        mdHoles[part] = mdHoles[part] or {}
-                        mdHoles[part][x] = mdHoles[part][x] or {}
-                        mdHoles[part][x][y] = true
+                            mdHoles[part] = mdHoles[part] or {}
+                            mdHoles[part][x] = mdHoles[part][x] or {}
+                            mdHoles[part][x][y] = true
+                        end
                     end
                 end
             end
@@ -298,10 +618,60 @@ function interactiveTailoringUI:getHoles()
 end
 
 
-interactiveTailoringUI.failThread = getScriptManager():getItem("Thread"):getNormalTexture()
-interactiveTailoringUI.failNeedle = getScriptManager():getItem("Needle"):getNormalTexture()
-interactiveTailoringUI.failScissors = getScriptManager():getItem("Scissors"):getNormalTexture()
-interactiveTailoringUI.failColor = {a=0.4,r=1,g=0.2,b=0.2}
+local setBodyPartActionForPlayer_Orig = ISGarmentUI.setBodyPartActionForPlayer
+function ISGarmentUI.setBodyPartActionForPlayer(playerObj, bodyPart, action, jobType, args)
+    setBodyPartActionForPlayer_Orig(playerObj, bodyPart, action, jobType, args)
+    if not playerObj or playerObj:isDead() then return end
+    if not playerObj:isLocalPlayer() then return end
+    local garmentUI = interactiveTailoringUI.instance
+    if not garmentUI then return end
+    if args then
+        args.jobType = jobType
+        args.delta = action:getJobDelta()
+    end
+    garmentUI:setBodyPartAction(bodyPart, args)
+end
+
+local setOtherActionForPlayer_Orig = ISGarmentUI.setOtherActionForPlayer
+function ISGarmentUI.setOtherActionForPlayer(playerObj, bodyPart, action)
+    setOtherActionForPlayer_Orig(playerObj, bodyPart, action)
+    if not playerObj or playerObj:isDead() then return end
+    if not playerObj:isLocalPlayer() then return end
+    local garmentUI = interactiveTailoringUI.instance
+    if not garmentUI then return end
+    garmentUI:setBodyPartForAction(action, bodyPart)
+end
+
+function interactiveTailoringUI:setBodyPartAction(bodyPart, args)
+    self.bodyPartAction = self.bodyPartAction or {}
+    self.bodyPartAction[bodyPart] = args
+end
+
+function interactiveTailoringUI.setBodyPartForLastAction(playerObj, bodyPart)
+    if not playerObj or playerObj:isDead() then return end
+    if not playerObj:isLocalPlayer() then return end
+    local actionQueue = ISTimedActionQueue.getTimedActionQueue(playerObj)
+    if not actionQueue or not actionQueue.queue or (#actionQueue.queue == 0) then return end
+    ISGarmentUI.setOtherActionForPlayer(playerObj, bodyPart, actionQueue.queue[#actionQueue.queue])
+end
+
+function interactiveTailoringUI:setBodyPartForAction(action, bodyPart)
+    self.actionToBodyPart = self.actionToBodyPart or {}
+    self.actionToBodyPart[action] = bodyPart
+end
+
+
+function interactiveTailoringUI:onMouseUp(x, y)
+    ISCollapsableWindow.onMouseUp(self)
+    if not self:getIsVisible() then return end
+
+    local clothingZone = self.mouseOverZones.clothing
+    if x >= clothingZone.x and x <= clothingZone.x+clothingZone.w and y >= clothingZone.y and y <= clothingZone.y+clothingZone.h then
+        getSoundManager():playUISound(self.sounds.activate)
+        self.toggleClothingInfo = not self.toggleClothingInfo
+    end
+end
+
 
 ---@param clothing InventoryItem|Clothing
 function interactiveTailoringUI:new(player, clothing)
@@ -324,6 +694,9 @@ function interactiveTailoringUI:new(player, clothing)
     o.gridScale = gridScale
     o.padding = padding
 
+    o.mouseOverZones = {}
+    o.toggleClothingInfo = false
+
     o.player = player
     o.clothing = clothing
     o.title = clothing:getDisplayName()
@@ -332,20 +705,12 @@ function interactiveTailoringUI:new(player, clothing)
     o:fetchItem("needle", "Needle", "SewingNeedle")
     o:fetchItem("scissors", "Scissors", "Scissors")
 
-    o.threadFont = UIFont.NewLarge
-    o.threadFontHeight = getTextManager():getFontHeight(o.threadFont)
-
     o.holes = 0
     o:getHoles()
+    o.parts = {}
 
-    --[[ ---debug
-    for _x=1, o.gridW do
-        o.holes[_x] = {}
-        for _y=1, o.gridH do
-            o.holes[_x][_y] = (ZombRand(100) <= 2)
-        end
-    end
-    --]]
+    o.sounds = {}
+    o.sounds.activate = "UIActivateButton"
 
     o.clothingUI = {}
     o.clothingUI.icon = clothing:getTex()
@@ -354,7 +719,6 @@ function interactiveTailoringUI:new(player, clothing)
 
     o.borderColor = {r=0.4, g=0.4, b=0.4, a=1}
     o.backgroundColor = {r=0, g=0, b=0, a=0.8}
-    --print("ITUI:  p:",player, "  c:",clothing)
 
     return o
 end
