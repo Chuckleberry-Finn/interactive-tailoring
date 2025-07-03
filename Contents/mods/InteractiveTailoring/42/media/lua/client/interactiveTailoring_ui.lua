@@ -360,8 +360,50 @@ function interactiveTailoringUI:drawClothingInfo(x,y,w,h)
 end
 
 
-function interactiveTailoringUI:onMouseMove(dx, dy)
-    ISCollapsableWindow.onMouseMove(self, dx, dy)
+function interactiveTailoringUI:mouseOverInfo(dx, dy)
+
+    if dx < self.gridX or dx > self.gridX+self.gridW or dy < self.gridY or dy > self.gridY+self.gridH then return end
+
+    self:drawRectBorder(self.gridX-2, self.gridY-2, self.gridW+4, self.gridH+4, 0.8, 1, 1, 1)
+    if self.toggleClothingInfo then return end
+
+    local itModData = self.clothing:getModData().interactiveTailoring
+    local mdHoles = itModData and itModData.holes
+    if mdHoles then
+        for part,hole in pairs(mdHoles) do
+            local xy = hole.xy
+            for _,xys in pairs(xy) do
+                local _x, _y = xys[1], xys[2]
+                if _x and _y then
+
+                    local x1, y1 = self.padding + (self.gridScale*(_x-1)), self.gridY + ((_y-1)*self.gridScale)
+                    local x2, y2 = x1+self.gridScale, y1+self.gridScale
+
+                    if dx >= x1 and dx <= x2 and dy > y1 and dy <= y2 then
+                        self:drawText("hole"..hole.id, dx, dy, 1, 1, 1, 0.9, UIFont.Small)
+                    end
+                end
+            end
+        end
+    end
+    --[[
+    local visual = c:getVisual()
+    local coveredParts = c:getCoveredParts()
+
+    for i = 0, coveredParts:size() - 1 do
+        local part = coveredParts:get(i)
+        local hole = visual:getHole(part) + visual:getBasicPatch(part) + visual:getDenimPatch(part) + visual:getLeatherPatch(part)
+
+        if hole > 0 then
+
+            local piece = mdHoles[part]
+            --]]
+end
+
+
+function interactiveTailoringUI:render()
+    ISCollapsableWindow.render(self)
+    self:mouseOverInfo(self:getMouseX(), self:getMouseY())
 end
 
 
@@ -588,7 +630,7 @@ function interactiveTailoringUI:getHoles()
         local hole = visual:getHole(part) + visual:getBasicPatch(part) + visual:getDenimPatch(part) + visual:getLeatherPatch(part)
 
         if hole > 0 then
-            
+
             local piece = mdHoles[part] or pieceHandler.pickRandomType()
 
             local maxX, maxY = 0, 0
