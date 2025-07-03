@@ -9,6 +9,8 @@ interactiveTailoringUI.fontSmallHgt = getTextManager():getFontHeight(UIFont.NewS
 interactiveTailoringUI.fabricTexture = getTexture("media/textures/fabric.png")
 interactiveTailoringUI.holeTexture = getTexture("media/textures/hole.png")
 
+interactiveTailoringUI.brokenItemIcon = getTexture("media/ui/icon_broken.png")
+
 interactiveTailoringUI.threadFont = UIFont.NewLarge
 interactiveTailoringUI.threadFontHeight = getTextManager():getFontHeight(interactiveTailoringUI.threadFont)
 
@@ -429,7 +431,7 @@ function interactiveTailoringUI:prerender()
 
 
     ---header
-    self:drawRectBorder(self.padding, self.padding+self.tbh, self:getWidth()-(self.padding*2), self.headerHeight, 0.9, 0.5, 0.5, 0.5)
+    self:drawRectBorder(self.padding-2, self.padding+self.tbh+1, self:getWidth()-(self.padding*2)+4, self.headerHeight, 0.9, 0.5, 0.5, 0.5)
 
     ---clothing
     local clothingX = self.padding + (((self.gridSizeW/2)+0.5)*self.gridScale) - (self.clothingUI.iW/2)
@@ -455,6 +457,10 @@ function interactiveTailoringUI:prerender()
     end
 
     self:drawItemIcon(self.clothing, clothingX, clothingY, 1, self.clothingUI.iW, self.clothingUI.iH)
+
+    if self.clothing:isBroken() then
+        self:drawTexture(self.brokenItemIcon, clothingX+self.clothingUI.iW-12, clothingY+self.clothingUI.iH-14, 1, 1, 1, 1)
+    end
 
     local bar_hgt = 8
     local fnt_hgt = self.fontSmallHgt
