@@ -31,14 +31,13 @@ pieceHandler.pieceTypes = {
 }
 
 pieceHandler.pieceTypesIndex = false
-pieceHandler.pieceTextures = {}
+
 
 function pieceHandler.buildPieceTypeIndex()
     if pieceHandler.pieceTypesIndex then return end
     pieceHandler.pieceTypesIndex = {}
 
     for id,_ in pairs(pieceHandler.pieceTypes) do
-        table.insert(pieceHandler.pieceTextures, getTexture("media/textures/"..id.."_piece.png"))
         table.insert(pieceHandler.pieceTypesIndex, id)
     end
 end
@@ -50,14 +49,18 @@ function pieceHandler.clonePiece(piece)
 end
 
 
-function pieceHandler.pickRandomType(rotate)
+function pieceHandler.pickRandomID()
     pieceHandler.buildPieceTypeIndex()
     local rand = ZombRand(#pieceHandler.pieceTypesIndex)+1
     local id = pieceHandler.pieceTypesIndex[rand]
+    return id
+end
+
+
+function pieceHandler.pickRandomType()
+    local id = pieceHandler.pickRandomID()
     local piece = pieceHandler.pieceTypes[id]
-
     local newPiece = pieceHandler.clonePiece(piece)
-
     return newPiece
 end
 

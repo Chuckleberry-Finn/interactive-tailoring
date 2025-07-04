@@ -22,6 +22,7 @@ interactiveTailoringUI.failColor = {a=0.5,r=1,g=0.1,b=0.1}
 interactiveTailoringUI.ghs = "<GHC>"
 interactiveTailoringUI.bhs = "<BHC>"
 
+interactiveTailoringUI.patchColorIndex = {["Cotton"]=1,["Denim"]=2,["Leather"]=3}
 interactiveTailoringUI.patchColor = {
     { r = 0.855, g = 0.843, b = 0.749 },--cotton
     { r = 0.396, g = 0.522, b = 0.639 },--denim
@@ -270,6 +271,13 @@ end
 
 
 function interactiveTailoringUI:onMouseWheel(del)
+
+    local x, y = self:getMouseX(), self:getMouseY()
+    if x >= self.mouseOverZones.sidebar.x and x <= self.mouseOverZones.sidebar.x+self.mouseOverZones.sidebar.w
+            and y >= self.mouseOverZones.sidebar.y and y <= self.mouseOverZones.sidebar.y+self.mouseOverZones.sidebar.h then
+        self.sidebarScroll = math.max(0,self.sidebarScroll+(del*3))
+    end
+
     return true
 end
 
@@ -361,8 +369,9 @@ end
 
 
 function interactiveTailoringUI:mouseOverInfo(dx, dy)
-
-    if dx < self.gridX or dx > self.gridX+self.gridW or dy < self.gridY or dy > self.gridY+self.gridH then return end
+    if not self.mouseOverZones.gridArea then return end
+    if dx < self.mouseOverZones.gridArea.x or dx > self.mouseOverZones.gridArea.x2
+            or dy < self.mouseOverZones.gridArea.y or dy > self.mouseOverZones.gridArea.y2 then return end
 
     self:drawRectBorder(self.gridX-2, self.gridY-2, self.gridW+4, self.gridH+4, 0.8, 1, 1, 1)
     if self.toggleClothingInfo then return end
@@ -380,7 +389,10 @@ function interactiveTailoringUI:mouseOverInfo(dx, dy)
                     local x2, y2 = x1+self.gridScale, y1+self.gridScale
 
                     if dx >= x1 and dx <= x2 and dy > y1 and dy <= y2 then
-                        self:drawText("hole"..hole.id, dx, dy, 1, 1, 1, 0.9, UIFont.Small)
+                        local text = (BloodBodyPartType.FromString(part):getDisplayName())
+                        local textX = getTextManager():MeasureStringX(UIFont.Small, text)
+                        self:drawRect(dx-(self.padding*1.5)-(textX/2), dy-self.fontSmallHgt-(self.padding/2), textX+self.padding, self.fontSmallHgt, 0.5, 0, 0, 0)
+                        self:drawText(text, dx-self.padding-(textX/2), dy-self.fontSmallHgt-(self.padding/2), 1, 1, 1, 0.9, UIFont.Small)
                     end
                 end
             end
@@ -412,6 +424,10 @@ function interactiveTailoringUI:prerender()
 
     self.coveredParts:setVisible(false)
 
+    if not self.mouseOverZones.gridArea then
+        self.mouseOverZones.gridArea = { x=self.gridX, y=self.gridY, x2=self.gridX+self.gridW, y2=self.gridY+self.gridH }
+    end
+
     ---fabric
     for _x=0, self.gridSizeW-1 do
         for _y=0, self.gridSizeH-1 do
@@ -430,12 +446,13 @@ function interactiveTailoringUI:prerender()
         local mdHoles = itModData and itModData.holes
         if mdHoles then
             for part,hole in pairs(mdHoles) do
+                local _part = BloodBodyPartType.FromString(part)
                 local xy = hole.xy
                 for _,xys in pairs(xy) do
                     local _x, _y = xys[1], xys[2]
                     if _x and _y then
 
-                        local patch = self.clothing:getPatchType(part)
+                        local patch = self.clothing:getPatchType(_part)
                         local patchType = patch and patch:getFabricType()
                         if patch then
                             local color = self.patchColor[patchType]
@@ -459,17 +476,40 @@ function interactiveTailoringUI:prerender()
     ---sidebar
     self:fetchMaterials()
 
-    local sidebarX = (self.padding*2)+(self.gridSizeW*self.gridScale)
-    for _x=0, 3-1 do
-        for _y=0, self.gridSizeH-1 do
 
-            self:drawRect(
-                    sidebarX + (self.gridScale*_x)+1, self.gridY + (_y*self.gridScale)+1,
-                    self.gridScale-2, self.gridScale-2,
-                    0.3, 0.3, 0.3, 0.3)
+    if not self.mouseOverZones.sidebar then
+        self.mouseOverZones.sidebar = { x=(self.padding*2)+(self.gridSizeW*self.gridScale)-2, y=self.gridY-2, w=(3*self.gridScale)+4, h=self.gridSizeH*self.gridScale+4 }
+    end
+
+    local width = 3
+    local height = self.gridSizeH
+    local max = (width * height)-1
+    self.sidebarScroll = math.min(self.sidebarScroll, (max/3)+3)
+    
+    for i = 0, max do
+        local _x = i % width
+        local _y = math.floor(i / width)
+
+        local matX = self.mouseOverZones.sidebar.x + (self.gridScale*_x)
+        local matY = self.gridY + (_y*self.gridScale)
+
+        local id, strip = self:getMaterialAtIndex(i+self.sidebarScroll, self.rippedSheets)
+        if not id then
+            id, strip = self:getMaterialAtIndex(i+self.sidebarScroll-(self.rippedSheets:size()-1), self.denimStrips)
+        end
+        if not id then
+            id, strip = self:getMaterialAtIndex(i+self.sidebarScroll-(self.rippedSheets:size()-1)-(self.denimStrips:size()-1), self.leatherStrips)
+        end
+
+        if id and strip then
+            self:drawRect(matX+1, matY+1, self.gridScale-2, self.gridScale-2, 0.3, 0.3, 0.3, 0.3)
+            local color = self.patchColor[self.patchColorIndex[strip:getFabricType()]]
+            self:drawTextureScaled(getTexture("media/textures/"..id.."_piece.png"), matX+4, matY+4, 24, 24, 1, color.r, color.g, color.b)
         end
     end
-    self:drawRectBorder(sidebarX-2, self.gridY-2, (3*self.gridScale)+4, self.gridSizeH*self.gridScale+4, 0.9, 0.5, 0.5, 0.5)
+
+    self:drawRectBorder(self.mouseOverZones.sidebar.x, self.mouseOverZones.sidebar.y,
+            self.mouseOverZones.sidebar.w, self.mouseOverZones.sidebar.h, 0.9, 0.5, 0.5, 0.5)
 
 
     ---header
@@ -523,7 +563,7 @@ function interactiveTailoringUI:prerender()
     self:drawText(getText("IGUI_garment_GlbDirt"), self.padding*2, barY, 1, 1, 1, 0.9, UIFont.Small)
     self:drawBar(self.padding*2, barY+fnt_hgt, barW, bar_hgt, self.clothing:getDirtyness() / 100, false)
 
-    self:drawTools(sidebarX,clothingY)
+    self:drawTools(self.mouseOverZones.sidebar.x,clothingY)
 
     ---draw tools or clothing info
     local x,y = self:getMouseX(), self:getMouseY()
@@ -585,6 +625,26 @@ function interactiveTailoringUI:fetchItem(forThis, type,tag)
 end
 
 
+function interactiveTailoringUI:getMaterialAtIndex(index, array)
+    if index > array:size()-1 then return end
+    local material = array:get(index)
+    local id = material and material:getModData().interactiveTailoring.piece
+    return id, material
+end
+
+
+function interactiveTailoringUI:applyDataToMaterials(array)
+    for i = 0, array:size() - 1 do
+        local strip = array:get(i)
+        local stripMD = strip and strip:getModData()
+        if not stripMD.interactiveTailoring then
+            stripMD.interactiveTailoring = {}
+            stripMD.interactiveTailoring.piece = pieceHandler.pickRandomID()
+        end
+    end
+end
+
+
 function interactiveTailoringUI:fetchMaterials()
     ---@type ItemContainer
     local inv = self.player:getInventory()
@@ -593,8 +653,13 @@ function interactiveTailoringUI:fetchMaterials()
     self.inventoryCheck = contentWeight
 
     self.rippedSheets = inv:getItemsFromType("RippedSheets")
+    self:applyDataToMaterials(self.rippedSheets)
+
     self.denimStrips = inv:getItemsFromType("DenimStrips")
+    self:applyDataToMaterials(self.denimStrips)
+
     self.leatherStrips = inv:getItemsFromType("LeatherStrips")
+    self:applyDataToMaterials(self.leatherStrips)
 end
 
 
@@ -629,9 +694,11 @@ function interactiveTailoringUI:getHoles()
         local part = coveredParts:get(i)
         local hole = visual:getHole(part) + visual:getBasicPatch(part) + visual:getDenimPatch(part) + visual:getLeatherPatch(part)
 
-        if hole > 0 then
+        local partID = tostring(part)
 
-            local piece = mdHoles[part] or pieceHandler.pickRandomType()
+        if hole > 0 and (not mdHoles[partID]) then
+
+            local piece = pieceHandler.pickRandomType()
 
             local maxX, maxY = 0, 0
             for _, pt in ipairs(piece.xy) do
@@ -644,8 +711,9 @@ function interactiveTailoringUI:getHoles()
             local validPlacement = false
             local attempts = 20
 
-            mdHoles[part] = mdHoles[part] or {}
-            mdHoles[part].xy = mdHoles[part].xy or {}
+            mdHoles[partID] = mdHoles[partID] or {}
+            mdHoles[partID].id = piece.id
+            mdHoles[partID].xy = mdHoles[partID].xy or {}
             
             while attempts > 0 and not validPlacement do
                 attempts = attempts - 1
@@ -673,7 +741,7 @@ function interactiveTailoringUI:getHoles()
                             grid[x] = grid[x] or {}
                             grid[x][y] = true
 
-                            table.insert(mdHoles[part].xy, {x, y})
+                            table.insert(mdHoles[partID].xy, {x, y})
                         end
                     end
                 end
@@ -729,6 +797,20 @@ function interactiveTailoringUI:setBodyPartForAction(action, bodyPart)
     self.actionToBodyPart[action] = bodyPart
 end
 
+function interactiveTailoringUI:onMouseDown(x, y)
+    if x >= self.mouseOverZones.gridArea.x and x <= self.mouseOverZones.gridArea.x2
+            and y >= self.mouseOverZones.gridArea.y and y <= self.mouseOverZones.gridArea.y2 then
+        return
+    end
+
+    if x >= self.mouseOverZones.sidebar.x and x <= self.mouseOverZones.sidebar.x+self.mouseOverZones.sidebar.w
+            and y >= self.mouseOverZones.sidebar.y and y <= self.mouseOverZones.sidebar.y+self.mouseOverZones.sidebar.h then
+        return
+    end
+
+    ISCollapsableWindow.onMouseDown(self, x, y)
+end
+
 
 function interactiveTailoringUI:onMouseUp(x, y)
     ISCollapsableWindow.onMouseUp(self)
@@ -769,6 +851,8 @@ function interactiveTailoringUI:new(player, clothing)
     o.gridY = (o.padding*2)+o.headerHeight+o.tbh
     o.gridW = (o.gridSizeW*o.gridScale)
     o.gridH = (o.gridSizeH*o.gridScale)
+
+    o.sidebarScroll = 0
 
     o.mouseOverZones = {}
     o.toggleClothingInfo = false
