@@ -368,6 +368,26 @@ function interactiveTailoringUI:drawClothingInfo(x,y,w,h)
 end
 
 
+function interactiveTailoringUI:drawActionProgress(x,y,w,h)
+    local fgBar = {r=0.5, g=0.5, b=0.5, a=0.5}
+    local UI = self
+    local bodyPartAction = UI.bodyPartAction and UI.bodyPartAction[part] or nil
+    if bodyPartAction then
+        y = y + self.fontSmallHgt
+        self:drawProgressBar(x, y, self.width - 10 - x, self.fontSmallHgt, bodyPartAction.delta, fgBar)
+        self:drawText(bodyPartAction.jobType, x + 4, y, 0.8, 0.8, 0.8, 1, UIFont.Small)
+    else
+        local actionQueue = ISTimedActionQueue.getTimedActionQueue(UI.player)
+        if actionQueue and actionQueue.queue and UI.actionToBodyPart and (UI.actionToBodyPart[actionQueue.queue[1]] == part) then
+            y = y + self.fontSmallHgt
+            self:drawProgressBar(x, y, self.width - 10 - x, self.fontSmallHgt, actionQueue.queue[1]:getJobDelta(), fgBar)
+            self:drawText(actionQueue.queue[1].jobType or "???", x + 4, y, 0.8, 0.8, 0.8, 1, UIFont.Small)
+            -- jobType is a hack for CraftingUI and ISHealthPanel also
+        end
+    end
+end
+
+
 function interactiveTailoringUI:mouseOverInfo(dx, dy)
     if not self.mouseOverZones.gridArea then return end
     if dx < self.mouseOverZones.gridArea.x or dx > self.mouseOverZones.gridArea.x2
@@ -379,6 +399,7 @@ function interactiveTailoringUI:mouseOverInfo(dx, dy)
     local itModData = self.clothing:getModData().interactiveTailoring
     local mdHoles = itModData and itModData.holes
     if mdHoles then
+        self.hoverOverPart = nil
         for part,hole in pairs(mdHoles) do
             local xy = hole.xy
             for _,xys in pairs(xy) do
@@ -387,9 +408,13 @@ function interactiveTailoringUI:mouseOverInfo(dx, dy)
 
                     local x1, y1 = self.padding + (self.gridScale*(_x-1)), self.gridY + ((_y-1)*self.gridScale)
                     local x2, y2 = x1+self.gridScale, y1+self.gridScale
-
                     if dx >= x1 and dx <= x2 and dy > y1 and dy <= y2 then
-                        local text = (BloodBodyPartType.FromString(part):getDisplayName())
+                        local _part = BloodBodyPartType.FromString(part)
+
+                        local patch = self.clothing:getPatchType(_part)
+                        if not patch then self.hoverOverPart = _part end
+
+                        local text = _part:getDisplayName()
                         local textX = getTextManager():MeasureStringX(UIFont.Small, text)
                         self:drawRect(dx-(self.padding*1.5)-(textX/2), dy-self.fontSmallHgt-(self.padding/2), textX+self.padding, self.fontSmallHgt, 0.5, 0, 0, 0)
                         self:drawText(text, dx-self.padding-(textX/2), dy-self.fontSmallHgt-(self.padding/2), 1, 1, 1, 0.9, UIFont.Small)
@@ -398,18 +423,6 @@ function interactiveTailoringUI:mouseOverInfo(dx, dy)
             end
         end
     end
-    --[[
-    local visual = c:getVisual()
-    local coveredParts = c:getCoveredParts()
-
-    for i = 0, coveredParts:size() - 1 do
-        local part = coveredParts:get(i)
-        local hole = visual:getHole(part) + visual:getBasicPatch(part) + visual:getDenimPatch(part) + visual:getLeatherPatch(part)
-
-        if hole > 0 then
-
-            local piece = mdHoles[part]
-            --]]
 end
 
 
@@ -423,6 +436,8 @@ function interactiveTailoringUI:prerender()
     ISCollapsableWindow.prerender(self)
 
     self.coveredParts:setVisible(false)
+
+    local mouseX,mouseY = self:getMouseX(), self:getMouseY()
 
     if not self.mouseOverZones.gridArea then
         self.mouseOverZones.gridArea = { x=self.gridX, y=self.gridY, x2=self.gridX+self.gridW, y2=self.gridY+self.gridH }
@@ -485,13 +500,10 @@ function interactiveTailoringUI:prerender()
     local height = self.gridSizeH
     local max = (width * height)-1
     self.sidebarScroll = math.min(self.sidebarScroll, (max/3)+3)
-    
+
     for i = 0, max do
         local _x = i % width
         local _y = math.floor(i / width)
-
-        local matX = self.mouseOverZones.sidebar.x + (self.gridScale*_x)
-        local matY = self.gridY + (_y*self.gridScale)
 
         local id, strip = self:getMaterialAtIndex(i+self.sidebarScroll, self.rippedSheets)
         if not id then
@@ -502,8 +514,20 @@ function interactiveTailoringUI:prerender()
         end
 
         if id and strip then
-            self:drawRect(matX+1, matY+1, self.gridScale-2, self.gridScale-2, 0.3, 0.3, 0.3, 0.3)
+
+            local matX = self.mouseOverZones.sidebar.x + (self.gridScale*_x)
+            local matY = self.gridY + (_y*self.gridScale)
             local color = self.patchColor[self.patchColorIndex[strip:getFabricType()]]
+
+            if (self.draggingMaterial and strip==self.draggingMaterial.strip) or (mouseX > matX and mouseX < (matX+self.gridScale) and mouseY > matY and mouseY < (matY+self.gridScale)) then
+                if not self.draggingMaterial then
+                    self.hoverOverMaterial = { strip=strip, id=id, color=color }
+                end
+                self:drawRect(matX+1, matY+1, self.gridScale-2, self.gridScale-2, 0.3,1,1,1)
+            else
+                self:drawRect(matX+1, matY+1, self.gridScale-2, self.gridScale-2, 0.1, 1, 1, 1)
+            end
+
             self:drawTextureScaled(getTexture("media/textures/"..id.."_piece.png"), matX+4, matY+4, 24, 24, 1, color.r, color.g, color.b)
         end
     end
@@ -566,15 +590,22 @@ function interactiveTailoringUI:prerender()
     self:drawTools(self.mouseOverZones.sidebar.x,clothingY)
 
     ---draw tools or clothing info
-    local x,y = self:getMouseX(), self:getMouseY()
     local clothingZone = self.mouseOverZones.clothing
-    if self.toggleClothingInfo or (x >= clothingZone.x and x <= clothingZone.x+clothingZone.w and y >= clothingZone.y and y <= clothingZone.y+clothingZone.h) then
+    if self.toggleClothingInfo or (mouseX >= clothingZone.x and mouseX <= clothingZone.x+clothingZone.w
+            and mouseY >= clothingZone.y and mouseY <= clothingZone.y+clothingZone.h) then
 
         self:drawTextureScaled(self.pinButtonTexture,
                 clothingZone.x + ((clothingZone.w-(self.tbh-2))/2) , clothingZone.y + ((clothingZone.h-(self.tbh-2))/2), self.tbh-2, self.tbh-2,
                 self.toggleClothingInfo and 0.9 or 0.6, 1, 1, 1)
 
         self:drawClothingInfo(self.gridX, self.gridY, self.gridW, self.gridH)
+    else
+        self:drawActionProgress(self.gridX, self.gridY, self.gridW, self.gridH)
+    end
+
+    if self.draggingMaterial then
+        self:drawTextureScaled(getTexture("media/textures/"..self.draggingMaterial.id.."_piece.png"), getMouseX()-self.x-self.gridScale*3, getMouseY()-self.y-self.gridScale*3,
+                self.gridScale*4,self.gridScale*4,1, self.draggingMaterial.color.r, self.draggingMaterial.color.g, self.draggingMaterial.color.b)
     end
 end
 
@@ -805,6 +836,7 @@ function interactiveTailoringUI:onMouseDown(x, y)
 
     if x >= self.mouseOverZones.sidebar.x and x <= self.mouseOverZones.sidebar.x+self.mouseOverZones.sidebar.w
             and y >= self.mouseOverZones.sidebar.y and y <= self.mouseOverZones.sidebar.y+self.mouseOverZones.sidebar.h then
+        if (not self.toggleClothingInfo) and self.hoverOverMaterial then self.draggingMaterial = self.hoverOverMaterial end
         return
     end
 
@@ -821,6 +853,13 @@ function interactiveTailoringUI:onMouseUp(x, y)
         getSoundManager():playUISound(self.sounds.activate)
         self.toggleClothingInfo = not self.toggleClothingInfo
     end
+
+    if self.hoverOverPart and self.draggingMaterial then
+        ISInventoryPaneContextMenu.repairClothing(self.player, self.clothing, self.hoverOverPart, self.draggingMaterial.strip, self.thread, self.needle)
+    end
+
+    self.hoverOverPart = nil
+    self.draggingMaterial = nil
 end
 
 
