@@ -19,9 +19,15 @@ interactiveTailoringUI.failNeedle = getScriptManager():getItem("Needle"):getNorm
 interactiveTailoringUI.failScissors = getScriptManager():getItem("Scissors"):getNormalTexture()
 interactiveTailoringUI.failColor = {a=0.5,r=1,g=0.1,b=0.1}
 
+--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=
+--TODO: Go over all the cannibalized parts from GarmentUI and refactor/optimize--
+--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=
+
 interactiveTailoringUI.ghs = "<GHC>"
 interactiveTailoringUI.bhs = "<BHC>"
 
+
+--TODO: One system looks for numbers the other for strings, doublecheck if this can't be merged
 interactiveTailoringUI.patchColorIndex = {["Cotton"]=1,["Denim"]=2,["Leather"]=3}
 interactiveTailoringUI.patchColor = {
     { r = 0.855, g = 0.843, b = 0.749 },--cotton
@@ -29,10 +35,12 @@ interactiveTailoringUI.patchColor = {
     { r = 0.584, g = 0.369, b = 0.204 },--leather
 }
 
+
 function interactiveTailoringUI:update()
     ISCollapsableWindow.update(self)
     if not self.clothing or not self.clothing:isInPlayerInventory() then self:close() end
 end
+
 
 
 function interactiveTailoringUI:onBodyPartListRightMouseUp(x, y)
@@ -42,18 +50,16 @@ function interactiveTailoringUI:onBodyPartListRightMouseUp(x, y)
 end
 
 
+--TODO: Couldn't this be achievable by taking coveredparts size and subtracting the hole count + the 3 patch counts?
+--- Or coveredparts iterated - if patch?
 function interactiveTailoringUI:getPaddablePartsNumber(clothing, parts)
     local count = 0
-
     for i=1, #parts do
         local part = parts[i]
         local hole = clothing:getVisual():getHole(part) > 0
         local patch = clothing:getPatchType(part)
-        if(hole == false and patch == nil) then
-            count = count + 1
-        end
+        if(hole == false and patch == nil) then count = count + 1 end
     end
-
     return count
 end
 
@@ -275,7 +281,7 @@ function interactiveTailoringUI:onMouseWheel(del)
     local x, y = self:getMouseX(), self:getMouseY()
     if x >= self.mouseOverZones.sidebar.x and x <= self.mouseOverZones.sidebar.x+self.mouseOverZones.sidebar.w
             and y >= self.mouseOverZones.sidebar.y and y <= self.mouseOverZones.sidebar.y+self.mouseOverZones.sidebar.h then
-        self.sidebarScroll = math.max(0,self.sidebarScroll+(del*3))
+        self.sidebarScroll = self.sidebarScroll+(del*3)
     end
 
     return true
@@ -411,13 +417,12 @@ function interactiveTailoringUI:mouseOverInfo(dx, dy)
                     if dx >= x1 and dx <= x2 and dy > y1 and dy <= y2 then
                         local _part = BloodBodyPartType.FromString(part)
 
-                        local patch = self.clothing:getPatchType(_part)
-                        if not patch then self.hoverOverPart = _part end
-
+                        self.hoverOverPart = _part
                         local text = _part:getDisplayName()
                         local textX = getTextManager():MeasureStringX(UIFont.Small, text)
                         self:drawRect(dx-(self.padding*1.5)-(textX/2), dy-self.fontSmallHgt-(self.padding/2), textX+self.padding, self.fontSmallHgt, 0.5, 0, 0, 0)
                         self:drawText(text, dx-self.padding-(textX/2), dy-self.fontSmallHgt-(self.padding/2), 1, 1, 1, 0.9, UIFont.Small)
+                        break
                     end
                 end
             end
@@ -499,18 +504,27 @@ function interactiveTailoringUI:prerender()
     local width = 3
     local height = self.gridSizeH
     local max = (width * height)-1
-    self.sidebarScroll = math.min(self.sidebarScroll, (max/3)+3)
 
+    local rs = self.rippedSheets:size()
+    local ds = self.denimStrips:size()
+    local ls = self.leatherStrips:size()
+
+    local total = rs + ds + ls
+    local stripScrolls = math.max(0, total - max-1)
+    self.sidebarScroll = math.max(0,math.min(stripScrolls, self.sidebarScroll))
+    
     for i = 0, max do
         local _x = i % width
         local _y = math.floor(i / width)
 
-        local id, strip = self:getMaterialAtIndex(i+self.sidebarScroll, self.rippedSheets)
-        if not id then
-            id, strip = self:getMaterialAtIndex(i+self.sidebarScroll-(self.rippedSheets:size()-1), self.denimStrips)
-        end
-        if not id then
-            id, strip = self:getMaterialAtIndex(i+self.sidebarScroll-(self.rippedSheets:size()-1)-(self.denimStrips:size()-1), self.leatherStrips)
+        local index = i + self.sidebarScroll
+        local id, strip
+        if index < rs then
+            id, strip = self:getMaterialAtIndex(index, self.rippedSheets)
+        elseif index < rs + ds then
+            id, strip = self:getMaterialAtIndex(index - rs, self.denimStrips)
+        elseif index < rs + ds + ls then
+            id, strip = self:getMaterialAtIndex(index - rs - ds, self.leatherStrips)
         end
 
         if id and strip then
@@ -823,10 +837,12 @@ function interactiveTailoringUI.setBodyPartForLastAction(playerObj, bodyPart)
     ISGarmentUI.setOtherActionForPlayer(playerObj, bodyPart, actionQueue.queue[#actionQueue.queue])
 end
 
+
 function interactiveTailoringUI:setBodyPartForAction(action, bodyPart)
     self.actionToBodyPart = self.actionToBodyPart or {}
     self.actionToBodyPart[action] = bodyPart
 end
+
 
 function interactiveTailoringUI:onMouseDown(x, y)
     if x >= self.mouseOverZones.gridArea.x and x <= self.mouseOverZones.gridArea.x2
@@ -836,11 +852,21 @@ function interactiveTailoringUI:onMouseDown(x, y)
 
     if x >= self.mouseOverZones.sidebar.x and x <= self.mouseOverZones.sidebar.x+self.mouseOverZones.sidebar.w
             and y >= self.mouseOverZones.sidebar.y and y <= self.mouseOverZones.sidebar.y+self.mouseOverZones.sidebar.h then
+
         if (not self.toggleClothingInfo) and self.hoverOverMaterial then self.draggingMaterial = self.hoverOverMaterial end
+
         return
     end
 
     ISCollapsableWindow.onMouseDown(self, x, y)
+end
+
+
+function interactiveTailoringUI:onRightMouseUp(x, y)
+    ISCollapsableWindow.onRightMouseUp(self)
+    if self.hoverOverPart then
+        self:doContextMenu(self.hoverOverPart, getMouseX(), getMouseY())
+    end
 end
 
 
