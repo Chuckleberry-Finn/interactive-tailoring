@@ -492,10 +492,8 @@ function interactiveTailoringUI:prerender()
 
     self:drawRectBorder(self.gridX-2, self.gridY-2, self.gridW+4, self.gridH+4, self.toggleClothingInfo and 0.8 or 0.4, 1, 1, 1)
 
-
     ---sidebar
     self:fetchMaterials()
-
 
     if not self.mouseOverZones.sidebar then
         self.mouseOverZones.sidebar = { x=(self.padding*2)+(self.gridSizeW*self.gridScale)-2, y=self.gridY-2, w=(3*self.gridScale)+4, h=self.gridSizeH*self.gridScale+4 }
@@ -529,7 +527,7 @@ function interactiveTailoringUI:prerender()
 
         if id and strip then
 
-            local matX = self.mouseOverZones.sidebar.x + (self.gridScale*_x)
+            local matX = self.mouseOverZones.sidebar.x + (self.gridScale*_x) + 2
             local matY = self.gridY + (_y*self.gridScale)
             local color = self.patchColor[self.patchColorIndex[strip:getFabricType()]]
 
@@ -880,7 +878,7 @@ function interactiveTailoringUI:onMouseUp(x, y)
         self.toggleClothingInfo = not self.toggleClothingInfo
     end
 
-    if self.hoverOverPart and self.draggingMaterial then
+    if self.hoverOverPart and self.draggingMaterial and (not self.clothing:getPatchType(self.hoverOverPart)) then
         ISInventoryPaneContextMenu.repairClothing(self.player, self.clothing, self.hoverOverPart, self.draggingMaterial.strip, self.thread, self.needle)
     end
 
