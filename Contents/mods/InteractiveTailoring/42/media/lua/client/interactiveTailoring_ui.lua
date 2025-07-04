@@ -369,18 +369,18 @@ end
 
 
 function interactiveTailoringUI:drawActionProgress(x,y,w,h)
-    local fgBar = {r=0.5, g=0.5, b=0.5, a=0.5}
-    local UI = self
-    local bodyPartAction = UI.bodyPartAction and UI.bodyPartAction[part] or nil
+
+    local actionQueue = ISTimedActionQueue.getTimedActionQueue(self.player)
+    local part = actionQueue.queue[1] and actionQueue.queue[1].part
+
+    local fgBar = {r=0.3, g=0.3, b=0.3, a=0.5}
+    local bodyPartAction = self.bodyPartAction and self.bodyPartAction[part] or nil
     if bodyPartAction then
-        y = y + self.fontSmallHgt
-        self:drawProgressBar(x, y, self.width - 10 - x, self.fontSmallHgt, bodyPartAction.delta, fgBar)
+        self:drawProgressBar(x, y, w, self.fontSmallHgt, bodyPartAction.delta, fgBar)
         self:drawText(bodyPartAction.jobType, x + 4, y, 0.8, 0.8, 0.8, 1, UIFont.Small)
     else
-        local actionQueue = ISTimedActionQueue.getTimedActionQueue(UI.player)
-        if actionQueue and actionQueue.queue and UI.actionToBodyPart and (UI.actionToBodyPart[actionQueue.queue[1]] == part) then
-            y = y + self.fontSmallHgt
-            self:drawProgressBar(x, y, self.width - 10 - x, self.fontSmallHgt, actionQueue.queue[1]:getJobDelta(), fgBar)
+        if actionQueue and actionQueue.queue and self.actionToBodyPart and (self.actionToBodyPart[actionQueue.queue[1]] == part) then
+            self:drawProgressBar(x, y, w, self.fontSmallHgt, actionQueue.queue[1]:getJobDelta(), fgBar)
             self:drawText(actionQueue.queue[1].jobType or "???", x + 4, y, 0.8, 0.8, 0.8, 1, UIFont.Small)
             -- jobType is a hack for CraftingUI and ISHealthPanel also
         end
