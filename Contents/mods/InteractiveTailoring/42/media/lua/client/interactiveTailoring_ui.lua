@@ -82,13 +82,36 @@ function interactiveTailoringUI:getPaddablePartsNumber(clothing, parts)
 end
 
 
-function interactiveTailoringUI:patchTooltip(fabric, part)
+function interactiveTailoringUI:patchTooltip(fabric, part, name)
     local tooltip = ISInventoryPaneContextMenu.addToolTip()
+
+    tooltip.description = ""
+
+    if name and part then
+        local partName = part:getDisplayName()
+        tooltip.description = tooltip.description .. partName .. " <LINE>"
+    end
+
     if fabric and part then
         if self.clothing:canFullyRestore(self.player, part, fabric) then
-            tooltip.description = getText("IGUI_perks_Tailoring") .. " :" .. self.player:getPerkLevel(Perks.Tailoring) .. " <LINE>" .. self.ghs .. getText("Tooltip_FullyRestore")
+            tooltip.description = tooltip.description .. getText("IGUI_perks_Tailoring") .. ": " .. self.player:getPerkLevel(Perks.Tailoring) .. " <LINE>" .. self.ghs .. getText("Tooltip_FullyRestore")
         else
-            tooltip.description = getText("IGUI_perks_Tailoring") .. " :" .. self.player:getPerkLevel(Perks.Tailoring) .. " <LINE>" .. self.ghs .. getText("Tooltip_ScratchDefense")  .. " +" .. Clothing.getScratchDefenseFromItem(self.player, fabric) .. " <LINE> " .. getText("Tooltip_BiteDefense") .. " +" .. Clothing.getBiteDefenseFromItem(self.player, fabric)
+            tooltip.description = tooltip.description .. getText("IGUI_perks_Tailoring") .. ": " .. self.player:getPerkLevel(Perks.Tailoring) .. " <LINE>" .. self.ghs .. getText("Tooltip_ScratchDefense")  .. " +" .. Clothing.getScratchDefenseFromItem(self.player, fabric) .. " <LINE> " .. getText("Tooltip_BiteDefense") .. " +" .. Clothing.getBiteDefenseFromItem(self.player, fabric)
+        end
+    else
+
+        if self.clothing:getVisual():getHole(part) > 0 then
+            tooltip.description = tooltip.description .. " <RED>".. getText("IGUI_garment_Hole") .. " <LINE>"
+        end
+
+        local bloodLevelForPart = self.clothing:getBloodlevelForPart(part)
+        if bloodLevelForPart > 0 then
+            tooltip.description = tooltip.description .. " <RED>".. getText("IGUI_garment_Blood") .. round(bloodLevelForPart * 100, 0) .. "%" .. " <LINE>"
+        end
+
+        local patch = self.clothing:getPatchType(part)
+        if patch then
+            tooltip.description = tooltip.description .. " <GREEN>".. getText("IGUI_TypeOfPatch", patch:getFabricTypeName()) .. " <LINE>"
         end
     end
 
@@ -447,16 +470,14 @@ function interactiveTailoringUI:mouseOverInfo(dx, dy)
                         local _part = BloodBodyPartType.FromString(part)
 
                         self.hoverOverPart = _part
-                        local text = _part:getDisplayName()
                         local strip = self.draggingMaterial and self.draggingMaterial.strip
                         if not self.toolTip then
-                            local toolTip = self:patchTooltip(strip, _part)
-                            toolTip.description = text.." <LINE>"..toolTip.description
+                            local toolTip = self:patchTooltip(strip, _part, true)
                             self:showTooltip(toolTip)
                         end
                         local tooltipOffset = self.draggingMaterial and (self.gridScale*2) or 0-self.gridScale
                         if self.toolTip then
-                            self.toolTip:setDesiredPosition( self.x+dx+tooltipOffset, self.y+dy-(self.gridScale) )
+                            self.toolTip:setDesiredPosition( self.x+dx+tooltipOffset, self.y+dy-self.toolTip.height-self.padding )
                         end
                         break
                     end
@@ -571,7 +592,7 @@ function interactiveTailoringUI:prerender()
             local contextOpen = getPlayerContextMenu(self.player:getPlayerNum()):getIsVisible()
             local draggingThis = (self.draggingMaterial and strip==self.draggingMaterial.strip)
             local mouseover = (mouseX > matX and mouseX < (matX+self.gridScale) and mouseY > matY and mouseY < (matY+self.gridScale))
-            
+
             if (not contextOpen) and (draggingThis or mouseover) then
                 if not self.draggingMaterial then
                     self.hoverOverMaterial = { strip=strip, id=id, color=color }
