@@ -37,7 +37,7 @@ interactiveTailoringUI.patchColor = {
 
 
 function interactiveTailoringUI:repairClothing(part, fabric)
-    if not fabric or not self.thread then return end
+    if not fabric or not self.clothing or not self.thread or not self.needle then return end
 
     local things = {fabric, self.thread, self.needle, self.clothing}
 
@@ -104,11 +104,12 @@ end
 function interactiveTailoringUI:patchMatchesPart(fabric, part)
     local partID = tostring(part)
     local md = self.clothing:getModData()
-    local mdHoles = md.interactiveTailoring and md.interactiveTailoring.holes
-    local holeID = mdHoles and mdHoles[partID].id
+    local mdHole = md.interactiveTailoring and md.interactiveTailoring.holes and md.interactiveTailoring.holes[partID]
+    local holeID = mdHole and mdHole.id and mdHole.rot and mdHole.id .. "_" .. mdHole.rot
 
-    local stripMD = fabric and fabric:getModData()
-    local piece = stripMD and stripMD.interactiveTailoring and stripMD.interactiveTailoring.piece
+    local fabricMD = fabric and fabric:getModData()
+    local fPiece = fabricMD.interactiveTailoring and fabricMD.interactiveTailoring.piece
+    local piece = fPiece and fPiece.id and fPiece.rot and fPiece.id .. "_" .. fPiece.rot
 
     if not piece or not holeID then return end
 
@@ -116,8 +117,8 @@ function interactiveTailoringUI:patchMatchesPart(fabric, part)
 end
 
 
-function interactiveTailoringUI:patchTooltip(fabric, part, name)
-    local tooltip = ISInventoryPaneContextMenu.addToolTip()
+function interactiveTailoringUI:patchTooltip(fabric, part, name, tooltip)
+    tooltip = tooltip or ISInventoryPaneContextMenu.addToolTip()
 
     tooltip.description = ""
 
@@ -379,6 +380,33 @@ function interactiveTailoringUI:onMouseWheel(del)
         self.sidebarScroll = self.sidebarScroll+(del*3)
     end
 
+    if self.draggingMaterial then
+        --{ strip=strip, id=piece.id, rot=piece.rot, color=color }
+        local fabricMD = self.draggingMaterial.strip and self.draggingMaterial.strip:getModData()
+        local fPiece = fabricMD.interactiveTailoring and fabricMD.interactiveTailoring.piece
+
+        if fPiece then
+            local angles = pieceHandler.pieceAngles[fPiece.id]
+            if angles then
+                local currentRot = fPiece.rot
+                local currentIndex = 1
+
+                for i = 1, #angles do
+                    if angles[i] == currentRot then
+                        currentIndex = i
+                        break
+                    end
+                end
+
+                local step = del > 0 and 1 or -1
+                local nextIndex = currentIndex + step
+                if nextIndex < 1 then nextIndex = #angles elseif nextIndex > #angles then nextIndex = 1 end
+                fPiece.rot = angles[nextIndex]
+                self.hoverOverMaterial.rot = angles[nextIndex]
+            end
+        end
+    end
+
     return true
 end
 
@@ -517,8 +545,10 @@ function interactiveTailoringUI:mouseOverInfo(dx, dy)
                         self.hoverOverPart = _part
                         local strip = self.draggingMaterial and self.draggingMaterial.strip
                         if not self.toolTip then
-                            local toolTip = self:patchTooltip(strip, _part, true)
+                            local toolTip = self:patchTooltip(strip, _part, true, self.toolTip)
                             self:showTooltip(toolTip)
+                        else
+                            self:patchTooltip(strip, _part, true, self.toolTip)
                         end
                         local tooltipOffset = self.draggingMaterial and (self.gridScale*2) or 0-self.gridScale
                         if self.toolTip then
@@ -533,10 +563,53 @@ function interactiveTailoringUI:mouseOverInfo(dx, dy)
 end
 
 
+function interactiveTailoringUI:DrawTextureAngleScaled(tex, centerX, centerY, angleDeg, scale, r, g, b, a)
+    if not tex or not self.javaObject or not self:isVisible() then return end
+
+
+    local w, h = tex:getWidth(), tex:getHeight()
+    scale = scale or 1
+    w = w * scale
+    h = h * scale
+
+    local cx, cy = w / 2, h / 2
+    local angleRad = math.rad(180 + (angleDeg or 0))
+
+    local cosA = math.cos(angleRad)
+    local sinA = math.sin(angleRad)
+
+    local dx = cosA * cx
+    local dy = sinA * cx
+    local dx2 = cosA * cy
+    local dy2 = sinA * cy
+
+    local absX = self:getAbsoluteX() + centerX
+    local absY = self:getAbsoluteY() + centerY
+
+    local x0 = dx - dy2 + absX
+    local y0 = dx2 + dy + absY
+    local x1 = -dx - dy2 + absX
+    local y1 = dx2 - dy + absY
+    local x2 = -dx + dy2 + absX
+    local y2 = -dx2 - dy + absY
+    local x3 = dx + dy2 + absX
+    local y3 = -dx2 + dy + absY
+
+    r, g, b, a = r or 1, g or 1, b or 1, a or 1
+    SpriteRenderer.instance:render(tex, x0, y0, x1, y1, x2, y2, x3, y3, r, g, b, a, r, g, b, a, r, g, b, a, r, g, b, a, nil)
+end
+
+
 function interactiveTailoringUI:render()
     ISCollapsableWindow.render(self)
     self:mouseOverInfo(self:getMouseX(), self:getMouseY())
     if (not self.hoverOverPart) then self:hideToolTip() end
+
+    if self.draggingMaterial then
+        self:DrawTextureAngleScaled(getTexture("media/textures/"..self.draggingMaterial.id.."_piece.png"),
+                getMouseX()-self.x, getMouseY()-self.y, self.draggingMaterial.rot,
+                4, self.draggingMaterial.color.r, self.draggingMaterial.color.g, self.draggingMaterial.color.b, 1)
+    end
 end
 
 
@@ -619,16 +692,16 @@ function interactiveTailoringUI:prerender()
         local _y = math.floor(i / width)
 
         local index = i + self.sidebarScroll
-        local id, strip
+        local piece, strip
         if index < rs then
-            id, strip = self:getMaterialAtIndex(index, self.rippedSheets)
+            piece, strip = self:getMaterialAtIndex(index, self.rippedSheets)
         elseif index < rs + ds then
-            id, strip = self:getMaterialAtIndex(index - rs, self.denimStrips)
+            piece, strip = self:getMaterialAtIndex(index - rs, self.denimStrips)
         elseif index < rs + ds + ls then
-            id, strip = self:getMaterialAtIndex(index - rs - ds, self.leatherStrips)
+            piece, strip = self:getMaterialAtIndex(index - rs - ds, self.leatherStrips)
         end
 
-        if id and strip then
+        if piece and strip then
 
             local matX = self.mouseOverZones.sidebar.x + (self.gridScale*_x) + 2
             local matY = self.gridY + (_y*self.gridScale)
@@ -640,14 +713,14 @@ function interactiveTailoringUI:prerender()
 
             if (not contextOpen) and (draggingThis or mouseover) then
                 if not self.draggingMaterial then
-                    self.hoverOverMaterial = { strip=strip, id=id, color=color }
+                    self.hoverOverMaterial = { strip=strip, id=piece.id, rot=piece.rot, color=color }
                 end
                 self:drawRect(matX+1, matY+1, self.gridScale-2, self.gridScale-2, 0.3,1,1,1)
             else
                 self:drawRect(matX+1, matY+1, self.gridScale-2, self.gridScale-2, 0.1, 1, 1, 1)
             end
 
-            self:drawTextureScaled(getTexture("media/textures/"..id.."_piece.png"), matX+4, matY+4, 24, 24, 1, color.r, color.g, color.b)
+            self:DrawTextureAngleScaled(getTexture("media/textures/"..piece.id.."_piece.png"), matX+16, matY+16, piece.rot, 1, color.r, color.g, color.b, 1)
         end
     end
 
@@ -721,12 +794,6 @@ function interactiveTailoringUI:prerender()
     else
         self:drawActionProgress(self.gridX, self.gridY, self.gridW, self.gridH)
     end
-
-    if self.draggingMaterial then
-        self:drawTextureScaled(getTexture("media/textures/"..self.draggingMaterial.id.."_piece.png"),
-                getMouseX()-self.x-self.gridScale*2, getMouseY()-self.y-self.gridScale*2,
-                self.gridScale*4,self.gridScale*4,1, self.draggingMaterial.color.r, self.draggingMaterial.color.g, self.draggingMaterial.color.b)
-    end
 end
 
 
@@ -779,18 +846,20 @@ end
 function interactiveTailoringUI:getMaterialAtIndex(index, array)
     if index > array:size()-1 then return end
     local material = array:get(index)
-    local id = material and material:getModData().interactiveTailoring.piece
-    return id, material
+    local piece = material and material:getModData().interactiveTailoring.piece
+    return piece, material
 end
 
 
 function interactiveTailoringUI:applyDataToMaterials(array)
     for i = 0, array:size() - 1 do
-        local strip = array:get(i)
-        local stripMD = strip and strip:getModData()
-        if not stripMD.interactiveTailoring then
-            stripMD.interactiveTailoring = {}
-            stripMD.interactiveTailoring.piece = pieceHandler.pickRandomID()
+        local fabric = array:get(i)
+        local fabricMD = fabric and fabric:getModData()
+
+        if not fabricMD.interactiveTailoring then
+            local piece = pieceHandler.pickRandomType()
+            fabricMD.interactiveTailoring = {}
+            fabricMD.interactiveTailoring.piece = {id=piece.id, rot=piece.rot}
         end
     end
 end
@@ -864,6 +933,7 @@ function interactiveTailoringUI:getHoles()
 
             mdHoles[partID] = mdHoles[partID] or {}
             mdHoles[partID].id = piece.id
+            mdHoles[partID].rot = piece.rot
             mdHoles[partID].xy = mdHoles[partID].xy or {}
             
             while attempts > 0 and not validPlacement do
