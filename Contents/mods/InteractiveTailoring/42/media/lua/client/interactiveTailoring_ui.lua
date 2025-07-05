@@ -36,6 +36,25 @@ interactiveTailoringUI.patchColor = {
 }
 
 
+function interactiveTailoringUI:repairClothing(part, fabric)
+    if not fabric or not self.thread then return end
+
+    local things = {fabric, self.thread, self.needle, self.clothing}
+
+    for _,thing in pairs(things) do
+        if luautils.haveToBeTransfered(self.player, thing) then
+            ISTimedActionQueue.add(ISInventoryTransferAction:new(self.player, thing, thing:getContainer(), self.player:getInventory()))
+            ISGarmentUI.setBodyPartForLastAction(self.player, part)
+        end
+    end
+
+    local action = ISRepairClothing:new(self.player, self.clothing, part, fabric, self.thread, self.needle)
+    local xp = self:patchMatchesPart(fabric, part) and 12 or 6
+    action.patchMatchesPart = xp
+    ISTimedActionQueue.add(action)
+end
+
+
 function interactiveTailoringUI:update()
     ISCollapsableWindow.update(self)
     if not self.clothing or not self.clothing:isInPlayerInventory() then self:close() end
@@ -82,6 +101,21 @@ function interactiveTailoringUI:getPaddablePartsNumber(clothing, parts)
 end
 
 
+function interactiveTailoringUI:patchMatchesPart(fabric, part)
+    local partID = tostring(part)
+    local md = self.clothing:getModData()
+    local mdHoles = md.interactiveTailoring and md.interactiveTailoring.holes
+    local holeID = mdHoles and mdHoles[partID].id
+
+    local stripMD = fabric and fabric:getModData()
+    local piece = stripMD and stripMD.interactiveTailoring and stripMD.interactiveTailoring.piece
+
+    if not piece or not holeID then return end
+
+    return (piece == holeID)
+end
+
+
 function interactiveTailoringUI:patchTooltip(fabric, part, name)
     local tooltip = ISInventoryPaneContextMenu.addToolTip()
 
@@ -93,11 +127,22 @@ function interactiveTailoringUI:patchTooltip(fabric, part, name)
     end
 
     if fabric and part then
+
+        tooltip.description = tooltip.description .. getText("IGUI_perks_Tailoring") .. ": " .. self.player:getPerkLevel(Perks.Tailoring) .. " <LINE>"
+
         if self.clothing:canFullyRestore(self.player, part, fabric) then
-            tooltip.description = tooltip.description .. getText("IGUI_perks_Tailoring") .. ": " .. self.player:getPerkLevel(Perks.Tailoring) .. " <LINE>" .. self.ghs .. getText("Tooltip_FullyRestore")
+            tooltip.description = tooltip.description .. self.ghs .. getText("Tooltip_FullyRestore") .. " <LINE>"
         else
-            tooltip.description = tooltip.description .. getText("IGUI_perks_Tailoring") .. ": " .. self.player:getPerkLevel(Perks.Tailoring) .. " <LINE>" .. self.ghs .. getText("Tooltip_ScratchDefense")  .. " +" .. Clothing.getScratchDefenseFromItem(self.player, fabric) .. " <LINE> " .. getText("Tooltip_BiteDefense") .. " +" .. Clothing.getBiteDefenseFromItem(self.player, fabric)
+            tooltip.description = tooltip.description .. self.ghs .. getText("Tooltip_ScratchDefense")  .. " +" .. Clothing.getScratchDefenseFromItem(self.player, fabric) .. " <LINE> " .. getText("Tooltip_BiteDefense") .. " +" .. Clothing.getBiteDefenseFromItem(self.player, fabric) .. " <LINE>"
         end
+
+        local patchMatchesPart = self:patchMatchesPart(fabric, part)
+        if patchMatchesPart then
+            tooltip.description = tooltip.description .. "<GREEN>" .. getText("IGUI_MatchedPiece")
+        else
+            tooltip.description = tooltip.description .. "<RED>" .. getText("IGUI_MismatchedPiece")
+        end
+
     else
 
         if self.clothing:getVisual():getHole(part) > 0 then
@@ -952,7 +997,7 @@ function interactiveTailoringUI:onMouseUp(x, y)
     self.draggingMaterial = nil
 
     if part and strip and (not self.clothing:getPatchType(part)) then
-        ISInventoryPaneContextMenu.repairClothing(self.player, self.clothing, part, strip, self.thread, self.needle)
+        self:repairClothing(part, strip)
     end
 end
 
