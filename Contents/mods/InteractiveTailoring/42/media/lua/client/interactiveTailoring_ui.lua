@@ -42,6 +42,24 @@ function interactiveTailoringUI:update()
 end
 
 
+function interactiveTailoringUI:showTooltip(toolTip)
+    if self.toolTip and (self.toolTip ~= toolTip) then self:hideToolTip() end
+    if not self.toolTip and toolTip then
+        self.toolTip = toolTip
+        self.toolTip:setVisible(true)
+        self.toolTip:addToUIManager()
+        self.toolTip.followMouse = not self.joyfocus
+    end
+end
+
+function interactiveTailoringUI:hideToolTip()
+    if self.toolTip ~= nil then
+        self.toolTip:removeFromUIManager()
+        self.toolTip:setVisible(false)
+        self.toolTip = nil
+    end
+end
+
 
 function interactiveTailoringUI:onBodyPartListRightMouseUp(x, y)
     local row = self:rowAt(x, y)
@@ -61,6 +79,20 @@ function interactiveTailoringUI:getPaddablePartsNumber(clothing, parts)
         if(hole == false and patch == nil) then count = count + 1 end
     end
     return count
+end
+
+
+function interactiveTailoringUI:patchTooltip(fabric, part)
+    local tooltip = ISInventoryPaneContextMenu.addToolTip()
+    if fabric and part then
+        if self.clothing:canFullyRestore(self.player, part, fabric) then
+            tooltip.description = getText("IGUI_perks_Tailoring") .. " :" .. self.player:getPerkLevel(Perks.Tailoring) .. " <LINE>" .. self.ghs .. getText("Tooltip_FullyRestore")
+        else
+            tooltip.description = getText("IGUI_perks_Tailoring") .. " :" .. self.player:getPerkLevel(Perks.Tailoring) .. " <LINE>" .. self.ghs .. getText("Tooltip_ScratchDefense")  .. " +" .. Clothing.getScratchDefenseFromItem(self.player, fabric) .. " <LINE> " .. getText("Tooltip_BiteDefense") .. " +" .. Clothing.getBiteDefenseFromItem(self.player, fabric)
+        end
+    end
+
+    return tooltip
 end
 
 
@@ -92,12 +124,7 @@ function interactiveTailoringUI:doPatch(fabric, thread, needle, part, context, s
     end
 
     local option = submenu:addOption(fabric:getDisplayName(), self.player, ISInventoryPaneContextMenu.repairClothing, self.clothing, part, fabric, thread, needle)
-    local tooltip = ISInventoryPaneContextMenu.addToolTip()
-    if self.clothing:canFullyRestore(self.player, part, fabric) then
-        tooltip.description = getText("IGUI_perks_Tailoring") .. " :" .. self.player:getPerkLevel(Perks.Tailoring) .. " <LINE>" .. self.ghs .. getText("Tooltip_FullyRestore")
-    else
-        tooltip.description = getText("IGUI_perks_Tailoring") .. " :" .. self.player:getPerkLevel(Perks.Tailoring) .. " <LINE>" .. self.ghs .. getText("Tooltip_ScratchDefense")  .. " +" .. Clothing.getScratchDefenseFromItem(self.player, fabric) .. " <LINE> " .. getText("Tooltip_BiteDefense") .. " +" .. Clothing.getBiteDefenseFromItem(self.player, fabric)
-    end
+    local tooltip = self:patchTooltip(fabric, part)
     option.toolTip = tooltip
 
     -- Patch/Add pad all
@@ -402,6 +429,8 @@ function interactiveTailoringUI:mouseOverInfo(dx, dy)
     self:drawRectBorder(self.gridX-2, self.gridY-2, self.gridW+4, self.gridH+4, 0.8, 1, 1, 1)
     if self.toggleClothingInfo then return end
 
+    if getPlayerContextMenu(self.player:getPlayerNum()):getIsVisible() then return end
+
     local itModData = self.clothing:getModData().interactiveTailoring
     local mdHoles = itModData and itModData.holes
     if mdHoles then
@@ -419,9 +448,16 @@ function interactiveTailoringUI:mouseOverInfo(dx, dy)
 
                         self.hoverOverPart = _part
                         local text = _part:getDisplayName()
-                        local textX = getTextManager():MeasureStringX(UIFont.Small, text)
-                        self:drawRect(dx-(self.padding*1.5)-(textX/2), dy-self.fontSmallHgt-(self.padding/2), textX+self.padding, self.fontSmallHgt, 0.5, 0, 0, 0)
-                        self:drawText(text, dx-self.padding-(textX/2), dy-self.fontSmallHgt-(self.padding/2), 1, 1, 1, 0.9, UIFont.Small)
+                        local strip = self.draggingMaterial and self.draggingMaterial.strip
+                        if not self.toolTip then
+                            local toolTip = self:patchTooltip(strip, _part)
+                            toolTip.description = text.." <LINE>"..toolTip.description
+                            self:showTooltip(toolTip)
+                        end
+                        local tooltipOffset = self.draggingMaterial and (self.gridScale*2) or 0-self.gridScale
+                        if self.toolTip then
+                            self.toolTip:setDesiredPosition( self.x+dx+tooltipOffset, self.y+dy-(self.gridScale) )
+                        end
                         break
                     end
                 end
@@ -434,6 +470,7 @@ end
 function interactiveTailoringUI:render()
     ISCollapsableWindow.render(self)
     self:mouseOverInfo(self:getMouseX(), self:getMouseY())
+    if (not self.hoverOverPart) then self:hideToolTip() end
 end
 
 
@@ -531,7 +568,11 @@ function interactiveTailoringUI:prerender()
             local matY = self.gridY + (_y*self.gridScale)
             local color = self.patchColor[self.patchColorIndex[strip:getFabricType()]]
 
-            if (self.draggingMaterial and strip==self.draggingMaterial.strip) or (mouseX > matX and mouseX < (matX+self.gridScale) and mouseY > matY and mouseY < (matY+self.gridScale)) then
+            local contextOpen = getPlayerContextMenu(self.player:getPlayerNum()):getIsVisible()
+            local draggingThis = (self.draggingMaterial and strip==self.draggingMaterial.strip)
+            local mouseover = (mouseX > matX and mouseX < (matX+self.gridScale) and mouseY > matY and mouseY < (matY+self.gridScale))
+            
+            if (not contextOpen) and (draggingThis or mouseover) then
                 if not self.draggingMaterial then
                     self.hoverOverMaterial = { strip=strip, id=id, color=color }
                 end
@@ -616,7 +657,8 @@ function interactiveTailoringUI:prerender()
     end
 
     if self.draggingMaterial then
-        self:drawTextureScaled(getTexture("media/textures/"..self.draggingMaterial.id.."_piece.png"), getMouseX()-self.x-self.gridScale*3, getMouseY()-self.y-self.gridScale*3,
+        self:drawTextureScaled(getTexture("media/textures/"..self.draggingMaterial.id.."_piece.png"),
+                getMouseX()-self.x-self.gridScale*2, getMouseY()-self.y-self.gridScale*2,
                 self.gridScale*4,self.gridScale*4,1, self.draggingMaterial.color.r, self.draggingMaterial.color.g, self.draggingMaterial.color.b)
     end
 end
@@ -860,16 +902,20 @@ function interactiveTailoringUI:onMouseDown(x, y)
 end
 
 
+
 function interactiveTailoringUI:onRightMouseUp(x, y)
     ISCollapsableWindow.onRightMouseUp(self)
-    if self.hoverOverPart then
+    if self.hoverOverPart and (not self.draggingMaterial) then
         self:doContextMenu(self.hoverOverPart, getMouseX(), getMouseY())
     end
+    if self.draggingMaterial then self:hideToolTip() end
+    self.hoverOverPart = nil
+    self.draggingMaterial = nil
 end
 
 
 function interactiveTailoringUI:onMouseUp(x, y)
-    ISCollapsableWindow.onMouseUp(self)
+    ISCollapsableWindow.onMouseUp(self, x, y)
     if not self:getIsVisible() then return end
 
     local clothingZone = self.mouseOverZones.clothing
@@ -878,14 +924,22 @@ function interactiveTailoringUI:onMouseUp(x, y)
         self.toggleClothingInfo = not self.toggleClothingInfo
     end
 
-    if self.hoverOverPart and self.draggingMaterial and (not self.clothing:getPatchType(self.hoverOverPart)) then
-        ISInventoryPaneContextMenu.repairClothing(self.player, self.clothing, self.hoverOverPart, self.draggingMaterial.strip, self.thread, self.needle)
-    end
+    local part = self.hoverOverPart
+    local strip = self.draggingMaterial and self.draggingMaterial.strip
 
     self.hoverOverPart = nil
     self.draggingMaterial = nil
+
+    if part and strip and (not self.clothing:getPatchType(part)) then
+        ISInventoryPaneContextMenu.repairClothing(self.player, self.clothing, part, strip, self.thread, self.needle)
+    end
 end
 
+function interactiveTailoringUI:onMouseUpOutside(x, y)
+    ISCollapsableWindow.onMouseUpOutside(self, x, y)
+    self.hoverOverPart = nil
+    self.draggingMaterial = nil
+end
 
 ---@param clothing InventoryItem|Clothing
 function interactiveTailoringUI:new(player, clothing)
