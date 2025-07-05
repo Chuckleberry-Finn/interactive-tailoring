@@ -61,6 +61,7 @@ function interactiveTailoringUI:update()
 end
 
 
+--TODO: Might be possible to refactor and merge show/hide better
 function interactiveTailoringUI:showTooltip(toolTip)
     if self.toolTip and (self.toolTip ~= toolTip) then self:hideToolTip() end
     if not self.toolTip and toolTip then
@@ -70,6 +71,7 @@ function interactiveTailoringUI:showTooltip(toolTip)
         self.toolTip.followMouse = not self.joyfocus
     end
 end
+
 
 function interactiveTailoringUI:hideToolTip()
     if self.toolTip ~= nil then
@@ -1038,7 +1040,6 @@ function interactiveTailoringUI:onMouseDown(x, y)
 end
 
 
-
 function interactiveTailoringUI:onRightMouseUp(x, y)
     ISCollapsableWindow.onRightMouseUp(self)
     if self.hoverOverPart and (not self.draggingMaterial) then
@@ -1071,11 +1072,13 @@ function interactiveTailoringUI:onMouseUp(x, y)
     end
 end
 
+
 function interactiveTailoringUI:onMouseUpOutside(x, y)
     ISCollapsableWindow.onMouseUpOutside(self, x, y)
     self.hoverOverPart = nil
     self.draggingMaterial = nil
 end
+
 
 ---@param clothing InventoryItem|Clothing
 function interactiveTailoringUI:new(player, clothing)
