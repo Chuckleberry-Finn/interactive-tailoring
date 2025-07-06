@@ -2,6 +2,7 @@ require "ISUI/ISCollapsableWindow.lua"
 require "ISUI/ISGarmentUI.lua"
 
 local pieceHandler = require "interactiveTailoring_pieceHandler.lua"
+local generatedColors = require "interactiveTailoring_generatedItemColor.lua"
 
 interactiveTailoringUI = ISCollapsableWindow:derive("interactiveTailoringUI")
 interactiveTailoringUI.fontHgt = getTextManager():getFontHeight(UIFont.NewMedium)
@@ -632,7 +633,7 @@ function interactiveTailoringUI:prerender()
             self:drawTextureScaled(self.fabricTexture,
                     self.padding + (self.gridScale*_x), self.gridY + (_y*self.gridScale),
                     self.gridScale, self.gridScale,
-                    self.clothing:getA(), self.clothing:getR(), self.clothing:getG(), self.clothing:getB())
+                    self.clothingColor.a, self.clothingColor.r, self.clothingColor.g, self.clothingColor.b)
         end
     end
 
@@ -1114,6 +1115,7 @@ function interactiveTailoringUI:new(player, clothing)
     o.toggleClothingInfo = false
 
     o.player = player
+    ---@type Clothing|InventoryItem
     o.clothing = clothing
     o.title = clothing:getDisplayName()
 
@@ -1132,6 +1134,22 @@ function interactiveTailoringUI:new(player, clothing)
 
     o.clothingUI = {}
     o.clothingUI.icon = clothing:getTex()
+
+
+
+    o.clothingColor = {
+        a=o.clothing:getA(),
+        r=o.clothing:getR(),
+        g=o.clothing:getG(),
+        b=o.clothing:getB(),
+    }
+
+    local clothingItem = o.clothing:getClothingItem()
+    if not clothingItem:getAllowRandomTint() then
+        local generatedColor = generatedColors[o.clothing:getType()] or {r=0.7,g=0.7,b=0.7}
+        o.clothingColor = {a=0.7,r=generatedColor.r,g=generatedColor.g,b=generatedColor.b}
+    end
+
     o.clothingUI.iW = o.clothingUI.icon:getWidthOrig()
     o.clothingUI.iH = o.clothingUI.icon:getHeightOrig()
 
