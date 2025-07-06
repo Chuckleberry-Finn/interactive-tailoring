@@ -1146,8 +1146,14 @@ function interactiveTailoringUI:new(player, clothing)
 
     local clothingItem = o.clothing:getClothingItem()
     if not clothingItem:getAllowRandomTint() then
-        local generatedColor = generatedColors[o.clothing:getIcon():getName()] or {r=0.7,g=0.7,b=0.7}
-        print("generatedColor: ", o.clothing:getIcon():getName(), "   r="..generatedColor.r..",g="..generatedColor.g..",b="..generatedColor.b)
+
+        local input = o.clothing:getIcon():getName()
+        ---For some reason getName returns the entire path of the icons for some items - Like `...common\ProjectZomboid\media\textures\Item_Shirt_CamoTree.png`
+        local iconName = input:match("([^\\/]+)%.png$") or input
+        local generatedColor = generatedColors[iconName] or {r=0.7,g=0.7,b=0.7}
+
+        print("generatedColor: ", iconName, "   r="..generatedColor.r..",g="..generatedColor.g..",b="..generatedColor.b)
+
         o.clothingColor = {a=1,r=generatedColor.r,g=generatedColor.g,b=generatedColor.b}
     end
 
