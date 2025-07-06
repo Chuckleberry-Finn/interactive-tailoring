@@ -1152,8 +1152,6 @@ function interactiveTailoringUI:new(player, clothing)
         local iconName = input:match("([^\\/]+)%.png$") or input
         local generatedColor = generatedColors[iconName] or {r=0.7,g=0.7,b=0.7}
 
-        print("generatedColor: ", iconName, "   r="..generatedColor.r..",g="..generatedColor.g..",b="..generatedColor.b)
-
         o.clothingColor = {a=1,r=generatedColor.r,g=generatedColor.g,b=generatedColor.b}
     end
 
