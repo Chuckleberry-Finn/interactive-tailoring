@@ -1146,8 +1146,9 @@ function interactiveTailoringUI:new(player, clothing)
 
     local clothingItem = o.clothing:getClothingItem()
     if not clothingItem:getAllowRandomTint() then
-        local generatedColor = generatedColors[o.clothing:getType()] or {r=0.7,g=0.7,b=0.7}
-        o.clothingColor = {a=0.7,r=generatedColor.r,g=generatedColor.g,b=generatedColor.b}
+        local generatedColor = generatedColors[o.clothing:getIcon():getName()] or {r=0.7,g=0.7,b=0.7}
+        print("generatedColor: ", o.clothing:getIcon():getName(), "   r="..generatedColor.r..",g="..generatedColor.g..",b="..generatedColor.b)
+        o.clothingColor = {a=1,r=generatedColor.r,g=generatedColor.g,b=generatedColor.b}
     end
 
     o.clothingUI.iW = o.clothingUI.icon:getWidthOrig()
