@@ -111,7 +111,7 @@ os.makedirs(os.path.dirname(LUA_OUTPUT_PATH), exist_ok=True)
 with open(LUA_OUTPUT_PATH, "w", encoding="utf-8") as f:
     f.write("local generated = {\n")
     for icon_name, color in sorted(output.items()):
-        f.write(f'    ["{icon_name}"] = {{ r = {color["r"]}, g = {color["g"]}, b = {color["b"]} }},\n')
+        f.write(f'    ["Item_{icon_name}"] = {{ r = {color["r"]}, g = {color["g"]}, b = {color["b"]} }},\n')
     f.write("}\n\nreturn generated\n")
 
 # === STEP 7: SUMMARY LOG ===
