@@ -52,7 +52,7 @@ function interactiveTailoringUI:repairClothing(part, fabric)
     end
 
     local action = ISRepairClothing:new(self.player, self.clothing, part, fabric, self.thread, self.needle)
-    local xp = self:patchMatchesPart(fabric, part) and 12 or 6
+    local xp = self:patchMatchesPart(fabric, part:index()) and 12 or 6
     action.patchMatchesPart = xp
     ISTimedActionQueue.add(action)
 end
@@ -106,10 +106,9 @@ function interactiveTailoringUI:getPaddablePartsNumber(clothing, parts)
 end
 
 
-function interactiveTailoringUI:patchMatchesPart(fabric, part)
-    local partID = tostring(part)
+function interactiveTailoringUI:patchMatchesPart(fabric, partIndex)
     local md = self.clothing:getModData()
-    local mdHole = md.interactiveTailoring and md.interactiveTailoring.holes and md.interactiveTailoring.holes[partID]
+    local mdHole = md.interactiveTailoring and md.interactiveTailoring.areas and md.interactiveTailoring.areas[partIndex]
     local holeID = mdHole and mdHole.id and mdHole.rot and mdHole.id .. "_" .. mdHole.rot
 
     local fabricMD = fabric and fabric:getModData()
@@ -142,7 +141,7 @@ function interactiveTailoringUI:patchTooltip(fabric, part, name, tooltip)
             tooltip.description = tooltip.description .. self.ghs .. getText("Tooltip_ScratchDefense")  .. " +" .. Clothing.getScratchDefenseFromItem(self.player, fabric) .. " <LINE> " .. getText("Tooltip_BiteDefense") .. " +" .. Clothing.getBiteDefenseFromItem(self.player, fabric) .. " <LINE>"
         end
 
-        local patchMatchesPart = self:patchMatchesPart(fabric, part)
+        local patchMatchesPart = self:patchMatchesPart(fabric, part:index())
         if patchMatchesPart then
             tooltip.description = tooltip.description .. "<GREEN>" .. getText("IGUI_MatchedPiece")
         else
@@ -299,7 +298,7 @@ function interactiveTailoringUI:doDrawItem(y, item, alt)
         self:drawRect(0, y, self:getWidth(), item.height, 0.1, 1.0, 1.0, 1.0)
     end
 
-    self:drawText(part:getDisplayName(), 0, y, 1, 1, 1, 1, UIFont.Small)
+    self:drawText(item.text, 0, y, 1, 1, 1, 1, UIFont.Small)
     self:drawText(self.parent.clothing:getDefForPart(part, true, false) .. "%", self.parent.biteColumn - self.x, y, 1, 1, 1, 1, UIFont.Small)
     self:drawText(self.parent.clothing:getDefForPart(part, false, false) .. "%", self.parent.scratchColumn - self.x, y, 1, 1, 1, 1, UIFont.Small)
     self:drawText(self.parent.clothing:getDefForPart(part, false, true) .. "%", self.parent.bulletColumn - self.x, y, 1, 1, 1, 1, UIFont.Small)
@@ -368,10 +367,11 @@ function interactiveTailoringUI:initialise()
     self:calcColumnWidths(gridX+self.padding)
 
     for i=0, self.clothing:getCoveredParts():size() - 1 do
+        ---@type BloodBodyPartType
         local part = self.clothing:getCoveredParts():get(i)
         if part then
             table.insert(self.parts, part)
-            self.coveredParts:addItem("part", part)
+            self.coveredParts:addItem(part:getDisplayName(), part)
         end
     end
 end
@@ -525,46 +525,53 @@ end
 function interactiveTailoringUI:mouseOverInfo(dx, dy)
     if not self.mouseOverZones.gridArea then return end
     if dx < self.mouseOverZones.gridArea.x or dx > self.mouseOverZones.gridArea.x2
-            or dy < self.mouseOverZones.gridArea.y or dy > self.mouseOverZones.gridArea.y2 then return end
+            or dy < self.mouseOverZones.gridArea.y or dy > self.mouseOverZones.gridArea.y2 then
+        self:hideToolTip()
+        return
+    end
 
-    self:drawRectBorder(self.gridX-2, self.gridY-2, self.gridW+4, self.gridH+4, 0.8, 1, 1, 1)
+    self:drawRectBorder(self.gridX - 2, self.gridY - 2, self.gridW + 4, self.gridH + 4, 0.8, 1, 1, 1)
     if self.toggleClothingInfo then return end
-
     if getPlayerContextMenu(self.player:getPlayerNum()):getIsVisible() then return end
 
     local itModData = self.clothing:getModData().interactiveTailoring
-    local mdHoles = itModData and itModData.holes
-    if mdHoles then
-        self.hoverOverPart = nil
-        for part,hole in pairs(mdHoles) do
-            local xy = hole.xy
-            for _,xys in pairs(xy) do
-                local _x, _y = xys[1], xys[2]
-                if _x and _y then
+    local mdAreas = itModData and itModData.areas
+    if not mdAreas then return end
 
-                    local x1, y1 = self.padding + (self.gridScale*(_x-1)), self.gridY + ((_y-1)*self.gridScale)
-                    local x2, y2 = x1+self.gridScale, y1+self.gridScale
-                    if dx >= x1 and dx <= x2 and dy > y1 and dy <= y2 then
-                        local _part = BloodBodyPartType.FromString(part)
+    self.hoverOverPart = nil
+    for part, hole in pairs(mdAreas) do
+        local xy = hole.xy
+        for _, flatIndex in ipairs(xy) do
+            local _x = ((flatIndex - 1) % self.gridSizeW) + 1
+            local _y = math.floor((flatIndex - 1) / self.gridSizeW) + 1
 
-                        self.hoverOverPart = _part
-                        local strip = self.draggingMaterial and self.draggingMaterial.strip
-                        if not self.toolTip then
-                            local toolTip = self:patchTooltip(strip, _part, true, self.toolTip)
-                            self:showTooltip(toolTip)
-                        else
-                            self:patchTooltip(strip, _part, true, self.toolTip)
-                        end
-                        local tooltipOffset = self.draggingMaterial and (self.gridScale*2) or 0-self.gridScale
-                        if self.toolTip then
-                            self.toolTip:setDesiredPosition( self.x+dx+tooltipOffset, self.y+dy-self.toolTip.height-self.padding )
-                        end
-                        break
-                    end
+            local x1 = self.padding + (self.gridScale * (_x - 1))
+            local y1 = self.gridY + (self.gridScale * (_y - 1))
+            local x2 = x1 + self.gridScale
+            local y2 = y1 + self.gridScale
+
+            if dx >= x1 and dx <= x2 and dy > y1 and dy <= y2 then
+                local _part = BloodBodyPartType.FromIndex(part)
+                self.hoverOverPart = _part
+
+                local strip = self.draggingMaterial and self.draggingMaterial.strip
+                if not self.toolTip then
+                    local toolTip = self:patchTooltip(strip, _part, true, self.toolTip)
+                    self:showTooltip(toolTip)
+                else
+                    self:patchTooltip(strip, _part, true, self.toolTip)
                 end
+
+                local tooltipOffset = self.draggingMaterial and (self.gridScale * 2) or (self.gridScale * 1.5)
+                if self.toolTip then
+                    self.toolTip:setDesiredPosition(self.x + dx + tooltipOffset, self.y + dy - self.toolTip.height - self.padding)
+                end
+
+                return
             end
         end
     end
+    self:hideToolTip()
 end
 
 
@@ -639,48 +646,56 @@ function interactiveTailoringUI:prerender()
         end
     end
 
-    ---holes, patches, and padding
+
+    ---areas (holes, patches, and padding)
     local itModData = self.clothing:getModData().interactiveTailoring
-    local mdHoles = itModData and itModData.holes
-    if mdHoles then
-        for part,hole in pairs(mdHoles) do
-            local _part = BloodBodyPartType.FromString(part)
-            local xy = hole.xy
-            for _,xys in pairs(xy) do
-                local _x, _y = xys[1], xys[2]
-                if _x and _y then
+    local mdAreas = itModData and itModData.areas
+    if mdAreas then
+        for part, area in pairs(mdAreas) do
+            local _part = BloodBodyPartType.FromIndex(part)
+            local xy = area.xy
+            for _, flatIndex in ipairs(xy) do
+                local _x = ((flatIndex - 1) % self.gridSizeW) + 1
+                local _y = math.floor((flatIndex - 1) / self.gridSizeW) + 1
 
-                    local patch = self.clothing:getPatchType(_part)
-                    local patchType = patch and patch:getFabricType()
-                    local drawTexture
-                    local addToEdges = 0
-                    local drawColor = {a=1, r=1, g=1, b=1}
+                local patch = self.clothing:getPatchType(_part)
+                local patchType = patch and patch:getFabricType()
+                local drawTexture
+                local addToEdges = 0
+                local drawColor = { a = 1, r = 1, g = 1, b = 1 }
 
-                    if patch then
-                        drawColor = self.patchColor[patchType]
-                        drawTexture = self.fabricTexture
+                if patch then
+                    drawColor = self.patchColor[patchType]
+                    drawTexture = self.fabricTexture
+                elseif self.clothing:getVisual():getHole(_part) > 0 then
+                    addToEdges = 2
+                    drawTexture = self.holeTexture
+                else
+                    drawColor = { a = 0.1, r = 1, g = 1, b = 1 }
+                    drawTexture = self.coverageTexture
+                end
 
-                    elseif self.clothing:getVisual():getHole(_part) > 0 then
-                        addToEdges = 2
-                        drawTexture = self.holeTexture
+                if drawTexture then
+                    self:drawTextureScaled(
+                            drawTexture,
+                            self.padding + (self.gridScale * (_x - 1)) - addToEdges,
+                            self.gridY + ((_y - 1) * self.gridScale) - addToEdges,
+                            self.gridScale + (addToEdges * 2),
+                            self.gridScale + (addToEdges * 2),
+                            drawColor.a, drawColor.r, drawColor.g, drawColor.b
+                    )
 
-                    else
-                        drawColor = {a=0.1, r=1, g=1, b=1}
-                        drawTexture = self.coverageTexture
-                    end
-
-                    if drawTexture then
-                        self:drawTextureScaled(drawTexture,
-                                self.padding + (self.gridScale*(_x-1))-addToEdges, self.gridY + ((_y-1)*self.gridScale)-addToEdges,
-                                self.gridScale+(addToEdges*2), self.gridScale+(addToEdges*2), drawColor.a, drawColor.r, drawColor.g, drawColor.b)
+                    if self.hoverOverPart == _part then
+                        self.mouseOverFade = (self.mouseOverFade or 0.1) + (self.mouseOverFadeRate or 0.003)
+                        self.mouseOverFadeRate = ((self.mouseOverFade >= 0.3) and -0.003) or ((self.mouseOverFade <= 0.1) and 0.003) or self.mouseOverFadeRate
+                        self:drawTextureScaled(self.coverageTexture, self.padding + (self.gridScale * (_x - 1)), self.gridY + ((_y - 1) * self.gridScale), self.gridScale, self.gridScale, self.mouseOverFade, 1, 1, 1)
                     end
                 end
             end
         end
     end
-
-
     self:drawRectBorder(self.gridX-2, self.gridY-2, self.gridW+4, self.gridH+4, self.toggleClothingInfo and 0.8 or 0.4, 1, 1, 1)
+
 
     ---sidebar
     self:fetchMaterials()
@@ -836,6 +851,7 @@ end
 
 function interactiveTailoringUI:close()
     interactiveTailoringUI.instance = nil
+    self:hideToolTip()
     self:removeFromUIManager()
 end
 
@@ -898,86 +914,76 @@ end
 
 
 ---also generates interactive-holes for the items
-function interactiveTailoringUI:getHoles()
+function interactiveTailoringUI:getAreas()
     if not self.clothing then return end
     ---@type Clothing|InventoryItem
     local c = self.clothing
 
-    --local cHoles = c:getHolesNumber()+c:getPatchesNumber()
-    --if cHoles == 0 then return 0 end
-
     local md = c:getModData()
 
-    md.interactiveTailoring = md.interactiveTailoring or {}
-    md.interactiveTailoring.holes = md.interactiveTailoring.holes or {}
-    local mdHoles = md.interactiveTailoring.holes
+    if md.interactiveTailoring.holes then md.interactiveTailoring = nil end
 
-    local grid = {}
-    for x = 1, self.gridSizeW do
-        grid[x] = {}
-        for y = 1, self.gridSizeH do
-            grid[x][y] = false
-        end
+    md.interactiveTailoring = md.interactiveTailoring or {}
+    md.interactiveTailoring.areas = md.interactiveTailoring.areas or {}
+    local mdHoles = md.interactiveTailoring.areas
+
+    local gridW, gridH = self.gridSizeW, self.gridSizeH
+    local grid = {}  -- flattened grid
+    for i = 1, gridW * gridH do
+        grid[i] = false
     end
 
-    --local visual = c:getVisual()
     local coveredParts = c:getCoveredParts()
     if coveredParts == 0 then return end
 
     for i = 0, coveredParts:size() - 1 do
-        local part = coveredParts:get(i)
-        --local hole = visual:getHole(part) + visual:getBasicPatch(part) + visual:getDenimPatch(part) + visual:getLeatherPatch(part)
+        ---@type BloodBodyPartType
+        local part = coveredParts:get(i):index()
 
-        local partID = tostring(part)
-
-        if not mdHoles[partID] then
-
+        if not mdHoles[part] then
             local piece = pieceHandler.pickRandomType()
 
+            -- determine max bounds of the piece
             local maxX, maxY = 0, 0
             for _, pt in ipairs(piece.xy) do
-                if pt[1] and pt[2] then
-                    maxX = math.max(maxX, pt[1])
-                    maxY = math.max(maxY, pt[2])
-                end
+                maxX = math.max(maxX, pt[1])
+                maxY = math.max(maxY, pt[2])
             end
+
+            -- prepare storage
+            mdHoles[part] = {
+                id = piece.id,
+                rot = piece.rot,
+                xy = {},
+            }
 
             local validPlacement = false
             local attempts = 20
-
-            mdHoles[partID] = mdHoles[partID] or {}
-            mdHoles[partID].id = piece.id
-            mdHoles[partID].rot = piece.rot
-            mdHoles[partID].xy = mdHoles[partID].xy or {}
-            
             while attempts > 0 and not validPlacement do
                 attempts = attempts - 1
-                local ox = ZombRand(self.gridSizeW - maxX) + 1
-                local oy = ZombRand(self.gridSizeH - maxY) + 1
+                local ox = ZombRand(gridW - maxX) + 1
+                local oy = ZombRand(gridH - maxY) + 1
 
                 local overlaps = false
+                local tempIndexes = {}
+
                 for _, pt in ipairs(piece.xy) do
-                    if pt[1] and pt[2] then
-                        local x = ox + pt[1]
-                        local y = oy + pt[2]
-                        if grid[x][y] then
-                            overlaps = true
-                            break
-                        end
+                    local x = ox + pt[1]
+                    local y = oy + pt[2]
+                    local flat = (y - 1) * gridW + x
+
+                    if grid[flat] then
+                        overlaps = true
+                        break
                     end
+                    table.insert(tempIndexes, flat)
                 end
 
                 if not overlaps then
                     validPlacement = true
-                    for _, pt in ipairs(piece.xy) do
-                        if pt[1] and pt[2] then
-                            local x = ox + pt[1]
-                            local y = oy + pt[2]
-                            grid[x] = grid[x] or {}
-                            grid[x][y] = true
-
-                            table.insert(mdHoles[partID].xy, {x, y})
-                        end
+                    for _, flat in ipairs(tempIndexes) do
+                        grid[flat] = true
+                        table.insert(mdHoles[part].xy, flat)
                     end
                 end
             end
@@ -1136,8 +1142,7 @@ function interactiveTailoringUI:new(player, clothing)
     o:fetchItem("needle", "Needle", "SewingNeedle")
     o:fetchItem("scissors", "Scissors", "Scissors")
 
-    o.holes = 0
-    o:getHoles()
+    o:getAreas()
     o.parts = {}
 
     o.sounds = {}
