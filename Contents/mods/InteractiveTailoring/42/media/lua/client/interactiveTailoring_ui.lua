@@ -716,7 +716,7 @@ function interactiveTailoringUI:prerender()
                         self.gridScale + (addToEdges * 2), self.gridScale + (addToEdges * 2), drawColor.a, drawColor.r, drawColor.g, drawColor.b,
                     })
 
-                    if self.hoverOverPart == part and self:isMouseOver() then
+                    if self.hoverOverPart == _part and self:isMouseOver() then
                         self.mouseOverFade = (self.mouseOverFade or 0.1) + (self.mouseOverFadeRate or 0.003)
                         self.mouseOverFadeRate = ((self.mouseOverFade >= 0.3) and -0.003) or ((self.mouseOverFade <= 0.1) and 0.003) or self.mouseOverFadeRate
                         self:drawTextureScaled(self.coverageTexture, self.padding + (self.gridScale * (_x - 1)), self.gridY + ((_y - 1) * self.gridScale),
@@ -746,7 +746,7 @@ function interactiveTailoringUI:prerender()
     if not self.mouseOverZones.clothing then
         self.mouseOverZones.clothing = { x=clothingX-2, y=clothingY-2, w=self.clothingUI.iW+4, h=self.clothingUI.iH+4 }
     end
-    
+
     ---draw tools or clothing info
     local clothingZone = self.mouseOverZones.clothing
     if self.toggleClothingInfo or (mouseX >= clothingZone.x and mouseX <= clothingZone.x+clothingZone.w
