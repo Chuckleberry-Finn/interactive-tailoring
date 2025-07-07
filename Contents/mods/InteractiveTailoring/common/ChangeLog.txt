@@ -1,0 +1,12 @@
+[ ALERT_CONFIG ]
+link1 = Chuck's Kofi = https://steamcommunity.com/linkfilter/?u=https://ko-fi.com/chuckleberryfinn,
+link2 = Workshop = https://steamcommunity.com/id/Chuckleberry_Finn/myworkshopfiles/?appid=108600,
+link3 = Github = https://steamcommunity.com/linkfilter/?u=https://github.com/Chuckleberry-Finn/interactive-tailoring,
+[ ------ ]
+
+[ 7/7/25 - Release ]
+- Interactive Minigame:
+    New UI window when inspecting clothing.
+    Match patches' shapes to repair holes, and pad clothes.
+- Change: Scissors are required to remove patches.
+[ ------ ]
