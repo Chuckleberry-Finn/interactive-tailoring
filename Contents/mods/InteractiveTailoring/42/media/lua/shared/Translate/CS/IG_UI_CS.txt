@@ -1,0 +1,4 @@
+IG_UI_CS = {
+    IGUI_MismatchedPiece = "Tato oprava se dobøe nehodí. (Ménì XP)",
+    IGUI_MatchedPiece = "Tato oprava se hodí dobøe. (Bonus XP)",
+}

@@ -1,0 +1,4 @@
+IG_UI_IT = {
+    IGUI_MismatchedPiece = "Questa patch non si adatta bene. (Meno XP)",
+    IGUI_MatchedPiece = "Questa patch si adatta bene. (Bonus XP)",
+}

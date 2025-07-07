@@ -1,0 +1,4 @@
+IG_UI_CA = {
+    IGUI_MismatchedPiece = "Aquest pegat no encaixarà bé. (Menys XP)",
+    IGUI_MatchedPiece = "Aquest pegat encaixa bé. (Bonus XP)",
+}

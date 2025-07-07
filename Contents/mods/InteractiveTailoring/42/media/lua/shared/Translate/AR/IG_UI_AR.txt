@@ -1,0 +1,4 @@
+IG_UI_AR = {
+    IGUI_MismatchedPiece = "Este parche no encaja bien. (Menos XP)",
+    IGUI_MatchedPiece = "Este parche se ajusta bien. (Bonus XP)",
+}

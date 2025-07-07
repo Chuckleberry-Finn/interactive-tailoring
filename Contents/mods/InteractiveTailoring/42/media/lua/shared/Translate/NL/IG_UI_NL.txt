@@ -1,0 +1,4 @@
+IG_UI_NL = {
+    IGUI_MismatchedPiece = "Deze patch past niet goed. (Minder XP)",
+    IGUI_MatchedPiece = "Deze patch past goed. (Bonus XP)",
+}

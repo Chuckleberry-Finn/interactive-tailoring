@@ -1,0 +1,3 @@
+ContextMenu_PH = {
+    ContextMenu_CantRemovePatchScissors = "Kinakailangan ang gunting.",
+}

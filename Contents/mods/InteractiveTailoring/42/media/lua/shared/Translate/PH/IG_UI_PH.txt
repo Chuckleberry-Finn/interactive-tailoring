@@ -1,0 +1,4 @@
+IG_UI_PH = {
+    IGUI_MismatchedPiece = "Ang patch na ito ay hindi magkasya nang maayos. (Mas mababa sa xp)",
+    IGUI_MatchedPiece = "Ang patch na ito ay umaangkop nang maayos. (Bonus XP)",
+}

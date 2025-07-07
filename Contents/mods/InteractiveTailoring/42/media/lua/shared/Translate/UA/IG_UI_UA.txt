@@ -1,0 +1,4 @@
+IG_UI_UA = {
+    IGUI_MismatchedPiece = "Цей патч не підходить добре. (Менше XP)",
+    IGUI_MatchedPiece = "Цей патч добре підходить. (Бонус XP)",
+}

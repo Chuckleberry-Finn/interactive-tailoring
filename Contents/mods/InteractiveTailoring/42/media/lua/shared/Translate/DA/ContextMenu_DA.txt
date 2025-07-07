@@ -1,0 +1,3 @@
+ContextMenu_DA = {
+    ContextMenu_CantRemovePatchScissors = "Saks kræves.",
+}

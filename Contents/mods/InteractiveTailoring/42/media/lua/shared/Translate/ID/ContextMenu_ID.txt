@@ -1,0 +1,3 @@
+ContextMenu_ID = {
+    ContextMenu_CantRemovePatchScissors = "Gunting diperlukan.",
+}

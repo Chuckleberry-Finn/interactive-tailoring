@@ -1,0 +1,4 @@
+IG_UI_NO = {
+    IGUI_MismatchedPiece = "Denne lappen passer ikke bra. (Mindre XP)",
+    IGUI_MatchedPiece = "Denne lappen passer godt. (Bonus XP)",
+}

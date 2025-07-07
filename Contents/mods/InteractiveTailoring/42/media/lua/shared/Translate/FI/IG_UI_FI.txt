@@ -1,0 +1,4 @@
+IG_UI_FI = {
+    IGUI_MismatchedPiece = "Tämä laastari ei sovi hyvin. (Vähemmän XP)",
+    IGUI_MatchedPiece = "Tämä laastari sopii hyvin. (Bonus XP)",
+}

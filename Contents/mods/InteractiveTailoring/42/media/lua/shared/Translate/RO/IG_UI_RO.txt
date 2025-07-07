@@ -1,0 +1,4 @@
+IG_UI_RO = {
+    IGUI_MismatchedPiece = "Acest patch nu se va potrivi bine. (Mai puțin xp)",
+    IGUI_MatchedPiece = "Acest plasture se potrivește bine. (Bonus XP)",
+}

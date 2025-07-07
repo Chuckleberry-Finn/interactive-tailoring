@@ -1,0 +1,4 @@
+IG_UI_HU = {
+    IGUI_MismatchedPiece = "Ez a javítás nem fog jól illeszkedni. (Kevesebb XP)",
+    IGUI_MatchedPiece = "Ez a javítás jól illeszkedik. (Bónusz XP)",
+}

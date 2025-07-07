@@ -1,0 +1,4 @@
+IG_UI_TR = {
+    IGUI_MismatchedPiece = "Bu yama iyi uymayacak. (Daha az XP)",
+    IGUI_MatchedPiece = "Bu yama iyi uyuyor. (Bonus XP)",
+}

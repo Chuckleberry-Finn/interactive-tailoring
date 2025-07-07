@@ -1,0 +1,3 @@
+ContextMenu_PTBR = {
+    ContextMenu_CantRemovePatchScissors = "Tesoura necessária.",
+}

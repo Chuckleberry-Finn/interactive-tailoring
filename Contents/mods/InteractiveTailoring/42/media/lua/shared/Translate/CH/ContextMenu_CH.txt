@@ -1,0 +1,3 @@
+ContextMenu_CH = {
+    ContextMenu_CantRemovePatchScissors = "需要剪刀。",
+}

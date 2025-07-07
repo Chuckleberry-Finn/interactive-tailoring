@@ -1,0 +1,4 @@
+IG_UI_ID = {
+    IGUI_MismatchedPiece = "Patch ini tidak akan cocok dengan baik. (Lebih sedikit XP)",
+    IGUI_MatchedPiece = "Patch ini sangat cocok. (Bonus XP)",
+}
