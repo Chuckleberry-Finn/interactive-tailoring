@@ -17,6 +17,12 @@ interactiveTailoringUI.brokenItemIcon = getTexture("media/ui/icon_broken.png")
 interactiveTailoringUI.threadFont = UIFont.NewLarge
 interactiveTailoringUI.threadFontHeight = getTextManager():getFontHeight(interactiveTailoringUI.threadFont)
 
+interactiveTailoringUI.materialTextures = {
+    RippedSheets = getScriptManager():getItem("RippedSheets"):getNormalTexture(),
+    DenimStrips = getScriptManager():getItem("DenimStrips"):getNormalTexture(),
+    LeatherStrips = getScriptManager():getItem("LeatherStrips"):getNormalTexture(),
+}
+
 interactiveTailoringUI.failThread = getScriptManager():getItem("Thread"):getNormalTexture()
 interactiveTailoringUI.failNeedle = getScriptManager():getItem("Needle"):getNormalTexture()
 interactiveTailoringUI.failScissors = getScriptManager():getItem("Scissors"):getNormalTexture()
@@ -223,19 +229,19 @@ end
 function interactiveTailoringUI:doContextMenu(part, x, y)
     local context = ISContextMenu.get(self.player:getPlayerNum(), x, y)
 
-    -- you need thread and needle
     local thread = self.thread
     local needle = self.needle
+    local scissors = self.scissors
 
-    local fabric1 = (self.rippedSheets:size() > 0) and self.rippedSheets:get(0)
-    local fabric2 = (self.denimStrips:size() > 0) and self.denimStrips:get(0)
-    local fabric3 = (self.leatherStrips:size() > 0) and self.leatherStrips:get(0)
+    local fabric1 = self.rippedSheets and (self.rippedSheets:size() > 0) and self.rippedSheets:get(0)
+    local fabric2 = self.denimStrips and (self.denimStrips:size() > 0) and self.denimStrips:get(0)
+    local fabric3 = self.leatherStrips and (self.leatherStrips:size() > 0) and self.leatherStrips:get(0)
 
     -- Require a needle to remove a patch.  Maybe scissors or a knife instead?
     local patch = self.clothing:getPatchType(part)
     if patch then
         -- Remove specific patch
-        local removeOption = context:addOption(getText("ContextMenu_RemovePatch"), self.player, ISInventoryPaneContextMenu.removePatch, self.clothing, part, needle)
+        local removeOption = context:addOption(getText("ContextMenu_RemovePatch"), self.player, ISInventoryPaneContextMenu.removePatch, self.clothing, part, scissors)
         local tooltip = ISInventoryPaneContextMenu.addToolTip()
         removeOption.toolTip = tooltip
 
@@ -244,21 +250,21 @@ function interactiveTailoringUI:doContextMenu(part, x, y)
         local removeAllOption
         local removeAllTooltip
         if (patchesCount > 1) then
-            removeAllOption = context:addOption(getText("ContextMenu_RemoveAllPatches"), self.player, ISInventoryPaneContextMenu.removeAllPatches, self.clothing, self.parts, needle)
+            removeAllOption = context:addOption(getText("ContextMenu_RemoveAllPatches"), self.player, ISInventoryPaneContextMenu.removeAllPatches, self.clothing, self.parts, scissors)
             removeAllTooltip = ISInventoryPaneContextMenu.addToolTip()
             removeAllOption.toolTip = removeAllTooltip
         end
 
-        if needle then
+        if scissors then
             tooltip.description = getText("Tooltip_GetPatchBack", ISRemovePatch.chanceToGetPatchBack(self.player)) .. " <LINE>" .. self.bhs .. getText("Tooltip_ScratchDefense")  .. " -" .. patch:getScratchDefense() .. " <LINE> " .. getText("Tooltip_BiteDefense") .. " -" .. patch:getBiteDefense()
             if(removeAllTooltip ~= nil) then
                 removeAllTooltip.description = getText("Tooltip_GetPatchesBack", ISRemovePatch.chanceToGetPatchBack(self.player)) .. " <LINE>" .. self.bhs .. getText("Tooltip_ScratchDefense")  .. " -" .. (patch:getScratchDefense() * patchesCount) .. " <LINE> " .. getText("Tooltip_BiteDefense") .. " -" .. (patch:getBiteDefense() * patchesCount)
             end
         else
-            tooltip.description = getText("ContextMenu_CantRemovePatch")
+            tooltip.description = getText("ContextMenu_CantRemovePatchScissors")
             removeOption.notAvailable = true
             if(removeAllTooltip ~= nil) then
-                removeAllTooltip.description = getText("ContextMenu_CantRemovePatch")
+                removeAllTooltip.description = getText("ContextMenu_CantRemovePatchScissors")
                 removeAllOption.notAvailable = true
             end
         end
@@ -266,25 +272,24 @@ function interactiveTailoringUI:doContextMenu(part, x, y)
     end
 
     -- Cannot patch without thread, needle and fabric
-    if not thread or not needle or (not fabric1 and not fabric2 and not fabric3) then
+    if (not thread or not needle or (not fabric1 and not fabric2 and not fabric3)) then
         local patchOption = context:addOption(getText("ContextMenu_Patch"))
         patchOption.notAvailable = true
         local tooltip = ISInventoryPaneContextMenu.addToolTip()
         tooltip.description = getText("ContextMenu_CantRepair")
         patchOption.toolTip = tooltip
-        return context
-    end
-
-    local submenu
-    local allSubmenu
-    if fabric1 then
-        submenu = self:doPatch(fabric1, thread, needle, part, context, submenu)
-    end
-    if fabric2 then
-        submenu = self:doPatch(fabric2, thread, needle, part, context, submenu)
-    end
-    if fabric3 then
-        submenu = self:doPatch(fabric3, thread, needle, part, context, submenu)
+    else
+        local submenu
+        local allSubmenu
+        if fabric1 then
+            submenu = self:doPatch(fabric1, thread, needle, part, context, submenu, true)
+        end
+        if fabric2 then
+            submenu = self:doPatch(fabric2, thread, needle, part, context, submenu, true)
+        end
+        if fabric3 then
+            submenu = self:doPatch(fabric3, thread, needle, part, context, submenu, true)
+        end
     end
 
     return context
@@ -407,7 +412,7 @@ function interactiveTailoringUI:onMouseWheel(del)
                 local nextIndex = currentIndex + step
                 if nextIndex < 1 then nextIndex = #angles elseif nextIndex > #angles then nextIndex = 1 end
                 fPiece.rot = angles[nextIndex]
-                self.hoverOverMaterial.rot = angles[nextIndex]
+                self.draggingMaterial.rot = angles[nextIndex]
             end
         end
     end
@@ -701,21 +706,24 @@ function interactiveTailoringUI:prerender()
     self:fetchMaterials()
 
     if not self.mouseOverZones.sidebar then
-        self.mouseOverZones.sidebar = { x=(self.padding*2)+(self.gridSizeW*self.gridScale)-2, y=self.gridY-2, w=(3*self.gridScale)+4, h=self.gridSizeH*self.gridScale+4 }
+        self.mouseOverZones.sidebar = { x=(self.padding*2)+(self.gridSizeW*self.gridScale)-2, y=self.gridY+self.gridScale-2, w=(3*self.gridScale)+4, h=(self.gridSizeH-1)*self.gridScale+4 }
     end
 
     local width = 3
-    local height = self.gridSizeH
+    local height = self.gridSizeH-1
     local max = (width * height)-1
 
-    local rs = self.rippedSheets:size()
-    local ds = self.denimStrips:size()
-    local ls = self.leatherStrips:size()
+    self:addMaterialButtons()
+
+    local rs = self.materialButtons.RippedSheets.active and self.rippedSheets:size() or 0
+    local ds = self.materialButtons.DenimStrips.active and self.denimStrips:size() or 0
+    local ls = self.materialButtons.LeatherStrips.active and self.leatherStrips:size() or 0
 
     local total = rs + ds + ls
     local stripScrolls = math.max(0, total - max-1)
     self.sidebarScroll = math.max(0,math.min(stripScrolls, self.sidebarScroll))
-    
+
+    self.hoverOverMaterial = nil
     for i = 0, max do
         local _x = i % width
         local _y = math.floor(i / width)
@@ -733,7 +741,7 @@ function interactiveTailoringUI:prerender()
         if piece and strip then
 
             local matX = self.mouseOverZones.sidebar.x + (self.gridScale*_x) + 2
-            local matY = self.gridY + (_y*self.gridScale)
+            local matY = self.gridY + self.gridScale + (_y*self.gridScale)
             local color = self.patchColor[self.patchColorIndex[strip:getFabricType()]]
 
             local contextOpen = getPlayerContextMenu(self.player:getPlayerNum()):getIsVisible()
@@ -905,11 +913,48 @@ function interactiveTailoringUI:fetchMaterials()
     self.rippedSheets = inv:getItemsFromType("RippedSheets")
     self:applyDataToMaterials(self.rippedSheets)
 
+
+
     self.denimStrips = inv:getItemsFromType("DenimStrips")
     self:applyDataToMaterials(self.denimStrips)
 
+
+
     self.leatherStrips = inv:getItemsFromType("LeatherStrips")
     self:applyDataToMaterials(self.leatherStrips)
+end
+
+
+function interactiveTailoringUI:renderMaterialButtons(ID, _x, _y, buttonSize, textureSize)
+    if not self.materialButtons[ID] then self.materialButtons[ID] = {x=_x, y=_y, x2=_x+buttonSize, y2=_y+buttonSize, active=true} end
+    self:drawRect(_x, _y, buttonSize, buttonSize, self.materialButtons[ID].active and 0.5 or 0.1,1,1,1)
+    self:drawTextureScaled(self.materialTextures[ID], _x+2, _y+2, textureSize, textureSize, self.materialButtons[ID].active and 1 or 0.3, 1, 1, 1)
+
+end
+
+
+function interactiveTailoringUI:addMaterialButtons()
+    local buttonSize = 26
+    local textureSize = 22
+    local _x = self.mouseOverZones.sidebar.x+5
+    local _y = self.gridY-1
+
+    self:renderMaterialButtons("RippedSheets", _x, _y, buttonSize, textureSize)
+    _x = _x+buttonSize+6
+    self:renderMaterialButtons("DenimStrips", _x, _y, buttonSize, textureSize)
+    _x = _x+buttonSize+6
+    self:renderMaterialButtons("LeatherStrips", _x, _y, buttonSize, textureSize)
+end
+
+
+function interactiveTailoringUI:clickMaterialButtons(x, y)
+    for _,layout in pairs(self.materialButtons) do
+        if x >= layout.x and x <= layout.x2 and y >= layout.y and y <= layout.y2 then
+            layout.active = not layout.active
+            getSoundManager():playUISound(self.sounds.activate)
+            break
+        end
+    end
 end
 
 
@@ -920,9 +965,7 @@ function interactiveTailoringUI:getAreas()
     local c = self.clothing
 
     local md = c:getModData()
-
-    if md.interactiveTailoring.holes then md.interactiveTailoring = nil end
-
+    
     md.interactiveTailoring = md.interactiveTailoring or {}
     md.interactiveTailoring.areas = md.interactiveTailoring.areas or {}
     local mdHoles = md.interactiveTailoring.areas
@@ -1048,12 +1091,9 @@ function interactiveTailoringUI:onMouseDown(x, y)
 
     if x >= self.mouseOverZones.sidebar.x and x <= self.mouseOverZones.sidebar.x+self.mouseOverZones.sidebar.w
             and y >= self.mouseOverZones.sidebar.y and y <= self.mouseOverZones.sidebar.y+self.mouseOverZones.sidebar.h then
-
         if (not self.toggleClothingInfo) and self.hoverOverMaterial then self.draggingMaterial = self.hoverOverMaterial end
-
         return
     end
-
     ISCollapsableWindow.onMouseDown(self, x, y)
 end
 
@@ -1078,6 +1118,8 @@ function interactiveTailoringUI:onMouseUp(x, y)
         getSoundManager():playUISound(self.sounds.activate)
         self.toggleClothingInfo = not self.toggleClothingInfo
     end
+
+    self:clickMaterialButtons(x, y)
 
     local part = self.hoverOverPart
     local strip = self.draggingMaterial and self.draggingMaterial.strip
@@ -1151,7 +1193,7 @@ function interactiveTailoringUI:new(player, clothing)
     o.clothingUI = {}
     o.clothingUI.icon = clothing:getTex()
 
-
+    o.materialButtons = {}
 
     o.clothingColor = {
         a=o.clothing:getA(),
