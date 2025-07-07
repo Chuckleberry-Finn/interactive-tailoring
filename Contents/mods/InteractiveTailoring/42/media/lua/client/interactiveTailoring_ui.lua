@@ -528,6 +528,7 @@ end
 
 
 function interactiveTailoringUI:mouseOverInfo(dx, dy)
+    self.hoverOverPart = nil
     if not self.mouseOverZones.gridArea then return end
     if dx < self.mouseOverZones.gridArea.x or dx > self.mouseOverZones.gridArea.x2
             or dy < self.mouseOverZones.gridArea.y or dy > self.mouseOverZones.gridArea.y2 then
@@ -543,7 +544,7 @@ function interactiveTailoringUI:mouseOverInfo(dx, dy)
     local mdAreas = itModData and itModData.areas
     if not mdAreas then return end
 
-    self.hoverOverPart = nil
+
     for part, hole in pairs(mdAreas) do
         local xy = hole.xy
         for _, flatIndex in ipairs(xy) do
@@ -690,7 +691,7 @@ function interactiveTailoringUI:prerender()
                             drawColor.a, drawColor.r, drawColor.g, drawColor.b
                     )
 
-                    if self.hoverOverPart == _part then
+                    if self.hoverOverPart == _part and self:isMouseOver() then
                         self.mouseOverFade = (self.mouseOverFade or 0.1) + (self.mouseOverFadeRate or 0.003)
                         self.mouseOverFadeRate = ((self.mouseOverFade >= 0.3) and -0.003) or ((self.mouseOverFade <= 0.1) and 0.003) or self.mouseOverFadeRate
                         self:drawTextureScaled(self.coverageTexture, self.padding + (self.gridScale * (_x - 1)), self.gridY + ((_y - 1) * self.gridScale), self.gridScale, self.gridScale, self.mouseOverFade, 1, 1, 1)
@@ -965,7 +966,7 @@ function interactiveTailoringUI:getAreas()
     local c = self.clothing
 
     local md = c:getModData()
-    
+
     md.interactiveTailoring = md.interactiveTailoring or {}
     md.interactiveTailoring.areas = md.interactiveTailoring.areas or {}
     local mdHoles = md.interactiveTailoring.areas
