@@ -738,6 +738,15 @@ function interactiveTailoringUI:prerender()
     end
     self:drawRectBorder(self.gridX-2, self.gridY-2, self.gridW+4, self.gridH+4, self.toggleClothingInfo and 0.8 or 0.4, 1, 1, 1)
 
+
+    ---clothing
+    local clothingX = self.padding + (((self.gridSizeW/2)+0.5)*self.gridScale) - (self.clothingUI.iW/2)
+    local clothingY = self.padding + (self.tbh*1.6) + (self.clothingUI.iH/2)
+
+    if not self.mouseOverZones.clothing then
+        self.mouseOverZones.clothing = { x=clothingX-2, y=clothingY-2, w=self.clothingUI.iW+4, h=self.clothingUI.iH+4 }
+    end
+    
     ---draw tools or clothing info
     local clothingZone = self.mouseOverZones.clothing
     if self.toggleClothingInfo or (mouseX >= clothingZone.x and mouseX <= clothingZone.x+clothingZone.w
@@ -820,13 +829,6 @@ function interactiveTailoringUI:prerender()
     ---header
     self:drawRectBorder(self.padding-2, self.padding+self.tbh+1, self:getWidth()-(self.padding*2)+4, self.headerHeight, 0.9, 0.5, 0.5, 0.5)
 
-    ---clothing
-    local clothingX = self.padding + (((self.gridSizeW/2)+0.5)*self.gridScale) - (self.clothingUI.iW/2)
-    local clothingY = self.padding + (self.tbh*1.6) + (self.clothingUI.iH/2)
-
-    if not self.mouseOverZones.clothing then
-        self.mouseOverZones.clothing = { x=clothingX-2, y=clothingY-2, w=self.clothingUI.iW+4, h=self.clothingUI.iH+4 }
-    end
 
     if not self.clothing:getFabricType() then
         self:drawText(getText("IGUI_garment_CantRepair"),
