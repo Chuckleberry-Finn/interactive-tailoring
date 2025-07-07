@@ -7,8 +7,10 @@ local generatedColors = require "interactiveTailoring_generatedItemColor.lua"
 interactiveTailoringUI = ISCollapsableWindow:derive("interactiveTailoringUI")
 interactiveTailoringUI.fontHgt = getTextManager():getFontHeight(UIFont.NewMedium)
 interactiveTailoringUI.fontSmallHgt = getTextManager():getFontHeight(UIFont.NewSmall)
+
 interactiveTailoringUI.fabricTexture = getTexture("media/textures/fabric.png")
 interactiveTailoringUI.holeTexture = getTexture("media/textures/hole.png")
+interactiveTailoringUI.coverageTexture = getTexture("media/textures/coverage.png")
 
 interactiveTailoringUI.brokenItemIcon = getTexture("media/ui/icon_broken.png")
 
@@ -31,9 +33,9 @@ interactiveTailoringUI.bhs = "<BHC>"
 --TODO: One system looks for numbers the other for strings, doublecheck if this can't be merged
 interactiveTailoringUI.patchColorIndex = {["Cotton"]=1,["Denim"]=2,["Leather"]=3}
 interactiveTailoringUI.patchColor = {
-    { r = 0.855, g = 0.843, b = 0.749 },--cotton
-    { r = 0.396, g = 0.522, b = 0.639 },--denim
-    { r = 0.584, g = 0.369, b = 0.204 },--leather
+    { a = 1, r = 0.855, g = 0.843, b = 0.749 },--cotton
+    { a = 1, r = 0.396, g = 0.522, b = 0.639 },--denim
+    { a = 1, r = 0.584, g = 0.369, b = 0.204 },--leather
 }
 
 
@@ -637,37 +639,46 @@ function interactiveTailoringUI:prerender()
         end
     end
 
-    ---holes
-    local cHoles = self.clothing:getHolesNumber()+self.clothing:getPatchesNumber()
-    if cHoles > 0 then
+    ---holes, patches, and padding
+    local itModData = self.clothing:getModData().interactiveTailoring
+    local mdHoles = itModData and itModData.holes
+    if mdHoles then
+        for part,hole in pairs(mdHoles) do
+            local _part = BloodBodyPartType.FromString(part)
+            local xy = hole.xy
+            for _,xys in pairs(xy) do
+                local _x, _y = xys[1], xys[2]
+                if _x and _y then
 
-        local itModData = self.clothing:getModData().interactiveTailoring
-        local mdHoles = itModData and itModData.holes
-        if mdHoles then
-            for part,hole in pairs(mdHoles) do
-                local _part = BloodBodyPartType.FromString(part)
-                local xy = hole.xy
-                for _,xys in pairs(xy) do
-                    local _x, _y = xys[1], xys[2]
-                    if _x and _y then
+                    local patch = self.clothing:getPatchType(_part)
+                    local patchType = patch and patch:getFabricType()
+                    local drawTexture
+                    local addToEdges = 0
+                    local drawColor = {a=1, r=1, g=1, b=1}
 
-                        local patch = self.clothing:getPatchType(_part)
-                        local patchType = patch and patch:getFabricType()
-                        if patch then
-                            local color = self.patchColor[patchType]
-                            self:drawTextureScaled(self.fabricTexture,
-                                    self.padding + (self.gridScale*(_x-1)), self.gridY + ((_y-1)*self.gridScale),
-                                    self.gridScale, self.gridScale, 1, color.r, color.g, color.b)
-                        else
-                            self:drawTextureScaled(self.holeTexture,
-                                    self.padding + (self.gridScale*(_x-1))-2, self.gridY + ((_y-1)*self.gridScale)-2,
-                                    self.gridScale+4, self.gridScale+4, 1, 1, 1, 1)
-                        end
+                    if patch then
+                        drawColor = self.patchColor[patchType]
+                        drawTexture = self.fabricTexture
+
+                    elseif self.clothing:getVisual():getHole(_part) > 0 then
+                        addToEdges = 2
+                        drawTexture = self.holeTexture
+
+                    else
+                        drawColor = {a=0.1, r=1, g=1, b=1}
+                        drawTexture = self.coverageTexture
+                    end
+
+                    if drawTexture then
+                        self:drawTextureScaled(drawTexture,
+                                self.padding + (self.gridScale*(_x-1))-addToEdges, self.gridY + ((_y-1)*self.gridScale)-addToEdges,
+                                self.gridScale+(addToEdges*2), self.gridScale+(addToEdges*2), drawColor.a, drawColor.r, drawColor.g, drawColor.b)
                     end
                 end
             end
         end
     end
+
 
     self:drawRectBorder(self.gridX-2, self.gridY-2, self.gridW+4, self.gridH+4, self.toggleClothingInfo and 0.8 or 0.4, 1, 1, 1)
 
@@ -723,7 +734,7 @@ function interactiveTailoringUI:prerender()
                 self:drawRect(matX+1, matY+1, self.gridScale-2, self.gridScale-2, 0.1, 1, 1, 1)
             end
 
-            self:DrawTextureAngleScaled(getTexture("media/textures/"..piece.id.."_piece.png"), matX+16, matY+16, piece.rot, 1, color.r, color.g, color.b, 1)
+            self:DrawTextureAngleScaled(getTexture("media/textures/"..piece.id.."_piece.png"), matX+16, matY+16, piece.rot, color.a, color.r, color.g, color.b, 1)
         end
     end
 
@@ -891,10 +902,9 @@ function interactiveTailoringUI:getHoles()
     if not self.clothing then return end
     ---@type Clothing|InventoryItem
     local c = self.clothing
-    local cHoles = c:getHolesNumber()+c:getPatchesNumber()
-    if cHoles == 0 then return 0 end
 
-    self.holes = cHoles
+    --local cHoles = c:getHolesNumber()+c:getPatchesNumber()
+    --if cHoles == 0 then return 0 end
 
     local md = c:getModData()
 
@@ -910,16 +920,17 @@ function interactiveTailoringUI:getHoles()
         end
     end
 
-    local visual = c:getVisual()
+    --local visual = c:getVisual()
     local coveredParts = c:getCoveredParts()
+    if coveredParts == 0 then return end
 
     for i = 0, coveredParts:size() - 1 do
         local part = coveredParts:get(i)
-        local hole = visual:getHole(part) + visual:getBasicPatch(part) + visual:getDenimPatch(part) + visual:getLeatherPatch(part)
+        --local hole = visual:getHole(part) + visual:getBasicPatch(part) + visual:getDenimPatch(part) + visual:getLeatherPatch(part)
 
         local partID = tostring(part)
 
-        if hole > 0 and (not mdHoles[partID]) then
+        if not mdHoles[partID] then
 
             local piece = pieceHandler.pickRandomType()
 
