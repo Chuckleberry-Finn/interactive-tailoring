@@ -17,6 +17,12 @@ interactiveTailoringUI.brokenItemIcon = getTexture("media/ui/icon_broken.png")
 interactiveTailoringUI.threadFont = UIFont.NewLarge
 interactiveTailoringUI.threadFontHeight = getTextManager():getFontHeight(interactiveTailoringUI.threadFont)
 
+interactiveTailoringUI.stainTexture = getTexture("media/textures/stain.png")
+interactiveTailoringUI.stainColor = {
+    dirt={r=0.45, g=0.35, b=0.25},
+    blood={r=0.45, g=0.05, b=0.05},
+}
+
 interactiveTailoringUI.materialTextures = {
     RippedSheets = getScriptManager():getItem("RippedSheets"):getNormalTexture(),
     DenimStrips = getScriptManager():getItem("DenimStrips"):getNormalTexture(),
@@ -72,6 +78,7 @@ end
 
 --TODO: Might be possible to refactor and merge show/hide better
 function interactiveTailoringUI:showTooltip(toolTip)
+    if not self:isMouseOver() then self:hideToolTip() return end
     if self.toolTip and (self.toolTip ~= toolTip) then self:hideToolTip() end
     if not self.toolTip and toolTip then
         self.toolTip = toolTip
@@ -493,6 +500,7 @@ end
 
 
 function interactiveTailoringUI:drawClothingInfo(x,y,w,h)
+    if not self:isMouseOver() then return end
     self:drawRect(x, y, w, h, 0.9, 0.1, 0.1, 0.1)
 
     local columnX = x + self.padding
@@ -652,13 +660,21 @@ function interactiveTailoringUI:prerender()
         end
     end
 
-
+    self:setStencilRect(self.gridX-2, self.gridY-2, self.gridW+4, self.gridH+4)
     ---areas (holes, patches, and padding)
     local itModData = self.clothing:getModData().interactiveTailoring
     local mdAreas = itModData and itModData.areas
     if mdAreas then
+
+        ---@type ItemVisual
+        local visual = self.clothing:getVisual()
+        local stainSize = 1
+
+        local textureToDraw = {}
+
         for part, area in pairs(mdAreas) do
             local _part = BloodBodyPartType.FromIndex(part)
+            local blood, dirt = visual:getBlood(_part), visual:getDirt(_part)
             local xy = area.xy
             for _, flatIndex in ipairs(xy) do
                 local _x = ((flatIndex - 1) % self.gridSizeW) + 1
@@ -669,6 +685,18 @@ function interactiveTailoringUI:prerender()
                 local drawTexture
                 local addToEdges = 0
                 local drawColor = { a = 1, r = 1, g = 1, b = 1 }
+
+
+                if blood > 0 then
+                    self:DrawTextureAngleScaled(self.stainTexture, self.padding+(self.gridScale*(_x-1))+18, self.gridY+((_y-1)*self.gridScale)+18,
+                            area.rot, stainSize, self.stainColor.blood.r, self.stainColor.blood.g, self.stainColor.blood.b, blood)
+                end
+
+
+                if dirt > 0 then
+                    self:DrawTextureAngleScaled(self.stainTexture, self.padding+(self.gridScale*(_x-1))+18, self.gridY+((_y-1)*self.gridScale)+18,
+                            area.rot, stainSize, self.stainColor.dirt.r, self.stainColor.dirt.g, self.stainColor.dirt.b, dirt)
+                end
 
                 if patch then
                     drawColor = self.patchColor[patchType]
@@ -682,26 +710,49 @@ function interactiveTailoringUI:prerender()
                 end
 
                 if drawTexture then
-                    self:drawTextureScaled(
-                            drawTexture,
-                            self.padding + (self.gridScale * (_x - 1)) - addToEdges,
-                            self.gridY + ((_y - 1) * self.gridScale) - addToEdges,
-                            self.gridScale + (addToEdges * 2),
-                            self.gridScale + (addToEdges * 2),
-                            drawColor.a, drawColor.r, drawColor.g, drawColor.b
-                    )
 
-                    if self.hoverOverPart == _part and self:isMouseOver() then
+                    table.insert(textureToDraw, {
+                        drawTexture, self.padding + (self.gridScale * (_x - 1)) - addToEdges, self.gridY + ((_y - 1) * self.gridScale) - addToEdges,
+                        self.gridScale + (addToEdges * 2), self.gridScale + (addToEdges * 2), drawColor.a, drawColor.r, drawColor.g, drawColor.b,
+                    })
+
+                    if self.hoverOverPart == part and self:isMouseOver() then
                         self.mouseOverFade = (self.mouseOverFade or 0.1) + (self.mouseOverFadeRate or 0.003)
                         self.mouseOverFadeRate = ((self.mouseOverFade >= 0.3) and -0.003) or ((self.mouseOverFade <= 0.1) and 0.003) or self.mouseOverFadeRate
-                        self:drawTextureScaled(self.coverageTexture, self.padding + (self.gridScale * (_x - 1)), self.gridY + ((_y - 1) * self.gridScale), self.gridScale, self.gridScale, self.mouseOverFade, 1, 1, 1)
+                        self:drawTextureScaled(self.coverageTexture, self.padding + (self.gridScale * (_x - 1)), self.gridY + ((_y - 1) * self.gridScale),
+                                self.gridScale, self.gridScale, self.mouseOverFade, 1, 1, 1)
+
+                        table.insert(textureToDraw, {
+                            self.coverageTexture, self.padding + (self.gridScale * (_x - 1)), self.gridY + ((_y - 1) * self.gridScale),
+                            self.gridScale, self.gridScale, self.mouseOverFade, drawColor.r, drawColor.g, drawColor.b
+                        })
                     end
                 end
             end
         end
+
+        for _,call in pairs(textureToDraw) do
+            local tex, x, y, w, h, a, r, g, b = call[1], call[2], call[3], call[4], call[5], call[6], call[7], call[8], call[9]
+            self:drawTextureScaled(tex, x, y, w, h, a, r, g, b)
+        end
     end
     self:drawRectBorder(self.gridX-2, self.gridY-2, self.gridW+4, self.gridH+4, self.toggleClothingInfo and 0.8 or 0.4, 1, 1, 1)
 
+    ---draw tools or clothing info
+    local clothingZone = self.mouseOverZones.clothing
+    if self.toggleClothingInfo or (mouseX >= clothingZone.x and mouseX <= clothingZone.x+clothingZone.w
+            and mouseY >= clothingZone.y and mouseY <= clothingZone.y+clothingZone.h) then
+
+        self:drawTextureScaled(self.pinButtonTexture,
+                clothingZone.x + ((clothingZone.w-(self.tbh-2))/2) , clothingZone.y + ((clothingZone.h-(self.tbh-2))/2), self.tbh-2, self.tbh-2,
+                self.toggleClothingInfo and 0.9 or 0.6, 1, 1, 1)
+
+        self:drawClothingInfo(self.gridX, self.gridY, self.gridW, self.gridH)
+    else
+        self:drawActionProgress(self.gridX, self.gridY, self.gridW, self.gridH)
+    end
+
+    self:clearStencilRect()
 
     ---sidebar
     self:fetchMaterials()
@@ -818,20 +869,6 @@ function interactiveTailoringUI:prerender()
     self:drawBar(self.padding*2, barY+fnt_hgt, barW, bar_hgt, self.clothing:getDirtyness() / 100, false)
 
     self:drawTools(self.mouseOverZones.sidebar.x,clothingY)
-
-    ---draw tools or clothing info
-    local clothingZone = self.mouseOverZones.clothing
-    if self.toggleClothingInfo or (mouseX >= clothingZone.x and mouseX <= clothingZone.x+clothingZone.w
-            and mouseY >= clothingZone.y and mouseY <= clothingZone.y+clothingZone.h) then
-
-        self:drawTextureScaled(self.pinButtonTexture,
-                clothingZone.x + ((clothingZone.w-(self.tbh-2))/2) , clothingZone.y + ((clothingZone.h-(self.tbh-2))/2), self.tbh-2, self.tbh-2,
-                self.toggleClothingInfo and 0.9 or 0.6, 1, 1, 1)
-
-        self:drawClothingInfo(self.gridX, self.gridY, self.gridW, self.gridH)
-    else
-        self:drawActionProgress(self.gridX, self.gridY, self.gridW, self.gridH)
-    end
 end
 
 
