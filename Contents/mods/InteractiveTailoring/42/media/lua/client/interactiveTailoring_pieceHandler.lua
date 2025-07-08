@@ -32,7 +32,7 @@ pieceHandler.pieceTypesIndex = false
 pieceHandler.pieceAngles = {}
 
 function pieceHandler.buildPieceTypeIndex()
-    --if pieceHandler.pieceTypesIndex then return end
+    if pieceHandler.pieceTypesIndex then return end
     pieceHandler.pieceTypesIndex = {}
 
     for id,data in pairs(pieceHandler.pieceTypes) do
