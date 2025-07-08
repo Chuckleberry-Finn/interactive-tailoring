@@ -871,6 +871,8 @@ function interactiveTailoringUI:prerender()
     self:drawBar(self.padding*2, barY+fnt_hgt, barW, bar_hgt, self.clothing:getDirtyness() / 100, false)
 
     self:drawTools(self.mouseOverZones.sidebar.x,clothingY)
+
+    self:drawTextRight("Interactive Tailoring", self.width-(self.padding*1.5), self.tbh+self.headerHeight+(self.padding*0.7)-self.fontSmallHgt, 1, 1, 1, 0.3, UIFont.Small)
 end
 
 
