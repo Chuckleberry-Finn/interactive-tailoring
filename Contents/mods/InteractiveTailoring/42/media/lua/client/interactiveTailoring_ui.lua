@@ -1226,6 +1226,7 @@ function interactiveTailoringUI:new(player, clothing)
     o:fetchItem("needle", "Needle", "SewingNeedle")
     o:fetchItem("scissors", "Scissors", "Scissors")
 
+    pieceHandler.buildPieceTypeIndex()
     o:getAreas()
     o.parts = {}
 
