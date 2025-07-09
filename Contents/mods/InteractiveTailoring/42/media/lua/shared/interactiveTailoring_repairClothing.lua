@@ -23,12 +23,27 @@ function ISRepairClothing:update()
     ISGarmentUI.setBodyPartActionForPlayer(self.character, self.part, self, jobType, { })
 end
 
+local origRepairClothingStart = ISRepairClothing.start
+function ISRepairClothing:start()
+    origRepairClothingStart(self)
+    self:setOverrideHandModels(self.needle, self.clothing)
+end
+
 
 require "TimedActions/ISRemovePatch.lua"
-local origRemovePatchUpdate = ISRepairClothing.update
+local origRemovePatchUpdate = ISRemovePatch.update
 function ISRemovePatch:update()
     origRemovePatchUpdate(self)
     local hole = self.clothing:getVisual():getHole(self.part) > 0 ---There isn't even a distinction made in vanilla for this.
     local jobType = hole and getText("ContextMenu_PatchHole") or getText("ContextMenu_AddPadding")
     ISGarmentUI.setBodyPartActionForPlayer(self.character, self.part, self, jobType, { })
 end
+
+
+local origRemovePatchStart = ISRemovePatch.start
+function ISRemovePatch:start()
+    origRemovePatchStart(self)
+    self:setOverrideHandModels(self.needle, self.clothing)
+end
+
+--self:setOverrideHandModels(secondItem, self.item)
