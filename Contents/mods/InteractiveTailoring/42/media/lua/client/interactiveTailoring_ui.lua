@@ -10,6 +10,7 @@ interactiveTailoringUI.fontSmallHgt = getTextManager():getFontHeight(UIFont.NewS
 
 interactiveTailoringUI.fabricTexture = getTexture("media/textures/fabric.png")
 interactiveTailoringUI.holeTexture = getTexture("media/textures/hole.png")
+interactiveTailoringUI.holeCoverageTexture = getTexture("media/textures/holeCoverage.png")
 interactiveTailoringUI.coverageTexture = getTexture("media/textures/coverage.png")
 interactiveTailoringUI.stitchTexture = getTexture("media/textures/stitch.png")
 
@@ -30,9 +31,12 @@ interactiveTailoringUI.materialTextures = {
     LeatherStrips = getScriptManager():getItem("LeatherStrips"):getNormalTexture(),
 }
 
-interactiveTailoringUI.failThread = getScriptManager():getItem("Thread"):getNormalTexture()
-interactiveTailoringUI.failNeedle = getScriptManager():getItem("Needle"):getNormalTexture()
-interactiveTailoringUI.failScissors = getScriptManager():getItem("Scissors"):getNormalTexture()
+interactiveTailoringUI.failToolTextures = {
+    thread = getScriptManager():getItem("Thread"):getNormalTexture(),
+    needle = getScriptManager():getItem("Needle"):getNormalTexture(),
+    scissors = getScriptManager():getItem("Scissors"):getNormalTexture()
+}
+
 interactiveTailoringUI.failColor = {a=0.5,r=1,g=0.1,b=0.1}
 
 --=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=--=
@@ -264,7 +268,7 @@ function interactiveTailoringUI:doContextMenu(part, x, y)
     local scissors = self.scissors
 
     local fabrics = {}
-    for id,array in ipairs(self.materials) do
+    for id,array in pairs(self.materials) do
         if array:size() > 0 then table.insert(fabrics, array:get(0)) end
     end
 
@@ -348,7 +352,7 @@ function interactiveTailoringUI:doDrawItem(y, item, alt)
         y = y + self.parent.fontSmallHgt
 
         self.parent.patchHasHole[part] = self.parent.patchHasHole[part] or self.parent:checkPatchHasHole(patch)
-        local typeOf = self.patchHasHole[part] and getText("IGUI_TypeOfPatch", patch:getFabricTypeName()) or getText("IGUI_TypeOfPadding", patch:getFabricTypeName())
+        local typeOf = self.parent.patchHasHole[part] and getText("IGUI_TypeOfPatch", patch:getFabricTypeName()) or getText("IGUI_TypeOfPadding", patch:getFabricTypeName())
 
         self:drawText("- " .. typeOf, 10, y, gr,gg,gb, 1, UIFont.Small)
     end
@@ -410,10 +414,22 @@ end
 function interactiveTailoringUI:onMouseWheel(del)
 
     local x, y = self:getMouseX(), self:getMouseY()
-    if x >= self.mouseOverZones.sidebar.x and x <= self.mouseOverZones.sidebar.x+self.mouseOverZones.sidebar.w
-            and y >= self.mouseOverZones.sidebar.y and y <= self.mouseOverZones.sidebar.y+self.mouseOverZones.sidebar.h then
-        self.sidebarScroll = self.sidebarScroll+(del*3)
+
+    if not self.draggingMaterial then
+        local sidebarZone = self.mouseOverZones.sidebar
+        if x >= sidebarZone.x and x <= sidebarZone.x+sidebarZone.w and y >= sidebarZone.y and y <= sidebarZone.y+sidebarZone.h then
+            self.sidebarScroll = self.sidebarScroll+(del*3)
+        end
+
+        for tool,value in pairs(self.toolScroll) do
+            local toolZone = self.mouseOverZones[tool]
+            if x >= toolZone.x and x <= toolZone.x+toolZone.w and y >= toolZone.y and y <= toolZone.y+sidebarZone.h then
+                self[tool] = false
+                self.toolScroll[tool] = self.toolScroll[tool]+(del)
+            end
+        end
     end
+
 
     if self.draggingMaterial then
         --{ strip=strip, id=piece.id, rot=piece.rot, color=color }
@@ -453,44 +469,41 @@ function interactiveTailoringUI:createChildren()
 end
 
 
-function interactiveTailoringUI:drawTools(x,y)
-    ---thread
-    local threadX = x+(self.gridScale*0.66)
-    self:fetchItem("thread", "Thread", "Thread")
-    if self.thread then
-        self:drawRectBorder(threadX-2, y-2, self.clothingUI.iW+4, self.clothingUI.iH+4, 0.7, 0.5, 0.5, 0.5)
-        self:drawBar(threadX, y, self.clothingUI.iW, self.clothingUI.iH, self.thread:getCurrentUsesFloat(), true, true)
-        self:drawItemIcon(self.thread, threadX, y, 1, self.clothingUI.iW, self.clothingUI.iH)
+function interactiveTailoringUI:drawTool(x,y,forThis,typeOf,tag,showUses)
+
+    self:fetchItem(forThis, typeOf, tag)
+
+    if not self.mouseOverZones[forThis] then self.mouseOverZones[forThis] = { x=x, y=y, w=self.clothingUI.iW, h=self.clothingUI.iH } end
+
+    local zone = self.mouseOverZones[forThis]
+
+    if self[forThis] then
+        self:drawRectBorder(zone.x-2, zone.y, zone.w+4, zone.h+4, 0.7, 0.5, 0.5, 0.5)
+        if showUses then self:drawBar(zone.x, zone.y+2, zone.w, zone.h, self[forThis]:getCurrentUsesFloat(), true, true) end
+        self:drawItemIcon(self[forThis], zone.x, zone.y+2, 1, zone.w, zone.h)
     else
-        self:drawRectBorder(threadX-2, y-2, self.clothingUI.iW+4, self.clothingUI.iH+4,
-                self.failColor.a*0.66, self.failColor.r, self.failColor.g, self.failColor.b)
-        self:drawTexture(self.failThread, threadX, y, self.failColor.a, self.failColor.r, self.failColor.g, self.failColor.b)
+        self:drawRectBorder(zone.x-2, zone.y, zone.w+4, zone.h+4, self.failColor.a*0.66, self.failColor.r, self.failColor.g, self.failColor.b)
+        self:drawTexture(self.failToolTextures[forThis], zone.x, zone.y+2, self.failColor.a, self.failColor.r, self.failColor.g, self.failColor.b)
     end
+end
+
+
+function interactiveTailoringUI:drawTools(x,y)
+
+    local toolY = y-2
+    local toolPad = (self.gridScale*0.66)
+    local toolX = x+self.gridScale
+
+    ---thread
+    self:drawTool(toolX,toolY,"thread","Thread","Thread", true)
 
     ---needle
-    local needleX = threadX-(self.padding*2)-self.gridScale
-    self:fetchItem("needle", "Needle", "SewingNeedle")
-    if self.needle then
-        self:drawRectBorder(needleX-2, y-2, self.clothingUI.iW+4, self.clothingUI.iH+4, 0.7, 0.5, 0.5, 0.5)
-        self:drawItemIcon(self.needle, needleX, y, 1, self.clothingUI.iW, self.clothingUI.iH)
-    else
-        self:drawRectBorder(needleX-2, y-2, self.clothingUI.iW+4, self.clothingUI.iH+4,
-                self.failColor.a*0.66, self.failColor.r, self.failColor.g, self.failColor.b)
-        self:drawTexture(self.failNeedle, needleX, y, self.failColor.a, self.failColor.r, self.failColor.g, self.failColor.b)
-    end
+    toolX = toolX - toolPad - self.mouseOverZones.thread.w
+    self:drawTool(toolX,toolY,"needle","Needle","SewingNeedle")
 
     ---scissors
-    local scissorsX = needleX-(self.padding*2)-self.gridScale
-
-    self:fetchItem("scissors", "Scissors", "Scissors")
-    if self.scissors then
-        self:drawRectBorder(scissorsX-2, y-2, self.clothingUI.iW+4, self.clothingUI.iH+4, 0.7, 0.5, 0.5, 0.5)
-        self:drawItemIcon(self.scissors, scissorsX, y, 1, self.clothingUI.iW, self.clothingUI.iH)
-    else
-        self:drawRectBorder(scissorsX-2, y-2, self.clothingUI.iW+4, self.clothingUI.iH+4,
-                self.failColor.a*0.66, self.failColor.r, self.failColor.g, self.failColor.b)
-        self:drawTexture(self.failScissors, scissorsX, y, self.failColor.a, self.failColor.r, self.failColor.g, self.failColor.b)
-    end
+    toolX = toolX - toolPad - self.mouseOverZones.needle.w
+    self:drawTool(toolX,toolY,"scissors","Scissors","Scissors")
 end
 
 
@@ -742,16 +755,16 @@ function interactiveTailoringUI:prerender()
                         local s = stitches[n]
                         local stitchColor = area.sc or {r=1, g=0.5, b=0.5}
                         for _,angle in ipairs(s) do
-                            table.insert(textureToDraw2, { self.stitchTexture, texX, texY, angle, 0.97, stitchColor.r, stitchColor.g, stitchColor.b, 1 })
+                            table.insert(textureToDraw2, { self.stitchTexture, texX, texY, angle, 1, stitchColor.r, stitchColor.g, stitchColor.b, 1 })
                         end
                     end
 
                     if hole then table.insert(textureToDraw2, { drawTexture, texX, texY, 0, 1, drawColor.r, drawColor.g, drawColor.b, drawColor.a }) end
 
-                    if (not hole) and self.hoverOverPart == _part and self:isMouseOver() then
+                    if self.hoverOverPart == _part and self:isMouseOver() then
                         self.mouseOverFade = (self.mouseOverFade or 0.05) + (self.mouseOverFadeRate or 0.005)
                         self.mouseOverFadeRate = ((self.mouseOverFade >= 0.3) and -0.005) or ((self.mouseOverFade <= 0.05) and 0.005) or self.mouseOverFadeRate
-                        table.insert(textureToDraw2, { self.coverageTexture, texX, texY, 0, 1, 1, 1, 1, self.mouseOverFade })
+                        table.insert(textureToDraw2, { hole and self.holeCoverageTexture or self.coverageTexture, texX, texY, 0, 1, 1, 1, 1, self.mouseOverFade })
                     end
 
                 end
@@ -761,6 +774,7 @@ function interactiveTailoringUI:prerender()
         for _,call in ipairs(textureToDraw1) do
             local tex, x, y, angle, scale, a, r, g, b = call[1], call[2], call[3], call[4], call[5], call[6], call[7], call[8], call[9]
             self:DrawTextureAngleScaled(tex, x, y, angle, scale, a, r, g, b)
+
         end
         for _,call in ipairs(textureToDraw2) do
             local tex, x, y, angle, scale, a, r, g, b = call[1], call[2], call[3], call[4], call[5], call[6], call[7], call[8], call[9]
@@ -768,7 +782,6 @@ function interactiveTailoringUI:prerender()
         end
     end
     self:drawRectBorder(self.gridX-2, self.gridY-2, self.gridW+4, self.gridH+4, self.toggleClothingInfo and 0.8 or 0.4, 1, 1, 1)
-
 
     ---clothing
     local clothingX = self.padding + (((self.gridSizeW/2)+0.5)*self.gridScale) - (self.clothingUI.iW/2)
@@ -780,19 +793,31 @@ function interactiveTailoringUI:prerender()
 
     ---draw tools or clothing info
     local clothingZone = self.mouseOverZones.clothing
+    local drawPin = false
     if self.toggleClothingInfo or (mouseX >= clothingZone.x and mouseX <= clothingZone.x+clothingZone.w
             and mouseY >= clothingZone.y and mouseY <= clothingZone.y+clothingZone.h) then
 
-        self:drawTextureScaled(self.pinButtonTexture,
-                clothingZone.x + ((clothingZone.w-(self.tbh-2))/2) , clothingZone.y + ((clothingZone.h-(self.tbh-2))/2), self.tbh-2, self.tbh-2,
-                self.toggleClothingInfo and 0.9 or 0.6, 1, 1, 1)
-
+        drawPin = true
         self:drawClothingInfo(self.gridX, self.gridY, self.gridW, self.gridH)
     else
         self:drawActionProgress(self.gridX, self.gridY, self.gridW, self.gridH)
     end
 
     self:clearStencilRect()
+
+    self:drawItemIcon(self.clothing, clothingX, clothingY, 1, self.clothingUI.iW, self.clothingUI.iH)
+
+    if self.clothing:isBroken() then
+        self:drawTexture(self.brokenItemIcon, clothingX+self.clothingUI.iW-12, clothingY+self.clothingUI.iH-14, 1, 1, 1, 1)
+    end
+
+    if drawPin then
+        self:drawTextureScaled(self.pinButtonTexture,
+                clothingZone.x + ((clothingZone.w-(self.tbh-2))/2),
+                clothingZone.y + ((clothingZone.h-(self.tbh-2))/2),
+                self.tbh-2, self.tbh-2,
+                self.toggleClothingInfo and 0.9 or 0.6, 1, 1, 1)
+    end
 
     ---sidebar
     self:fetchMaterials()
@@ -886,12 +911,6 @@ function interactiveTailoringUI:prerender()
                 self.toggleClothingInfo and 0.8 or 0.3, 1, 1, 1)
     end
 
-    self:drawItemIcon(self.clothing, clothingX, clothingY, 1, self.clothingUI.iW, self.clothingUI.iH)
-
-    if self.clothing:isBroken() then
-        self:drawTexture(self.brokenItemIcon, clothingX+self.clothingUI.iW-12, clothingY+self.clothingUI.iH-14, 1, 1, 1, 1)
-    end
-
     local bar_hgt = 8
     local fnt_hgt = self.fontSmallHgt
     local barY = (self.padding*1.5)+self.tbh
@@ -960,7 +979,23 @@ end
 function interactiveTailoringUI:fetchItem(forThis, type,tag)
     if self[forThis] and self[forThis]:isInPlayerInventory() then return end
     if (not type and not tag) then self[forThis] = false return end
-    self[forThis] = self.player:getInventory():getItemFromType(type, true, true) or self.player:getInventory():getFirstTagRecurse(tag) or false
+
+    ---@type ItemContainer
+    local inv = self.player:getInventory()
+
+    ---@type ArrayList
+    local items = inv:getItemsFromType(type, true)
+    if items:size() <= 0 then inv:getAllTagRecurse(tag, items) end
+
+    if items:size() <= 0 then self[forThis] = false return end
+
+    local scroll = self.toolScroll[forThis]
+    if scroll then
+        if scroll > items:size()-1 then self.toolScroll[forThis] = 0 end
+        if scroll < 0 then self.toolScroll[forThis] = items:size()-1 end
+    end
+
+    self[forThis] = items:get(self.toolScroll[forThis] or 0)
 end
 
 
@@ -1245,6 +1280,7 @@ function interactiveTailoringUI:new(player, clothing)
     o.gridH = (o.gridSizeH*o.gridScale)
 
     o.sidebarScroll = 0
+    o.toolScroll = {thread = 0, scissors=0, needle=0}
 
     o.mouseOverZones = {}
     o.toggleClothingInfo = false
