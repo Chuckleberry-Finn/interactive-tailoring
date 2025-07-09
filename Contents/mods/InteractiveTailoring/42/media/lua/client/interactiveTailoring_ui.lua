@@ -184,9 +184,7 @@ end
 
 
 function interactiveTailoringUI:doPatch(fabric, thread, needle, part, context, submenu)
-    if not self.clothing:getFabricType() then
-        return
-    end
+    if not self.clothing:getFabricType() then return end
 
     local hole = self.clothing:getVisual():getHole(part) > 0
     local patch = self.clothing:getPatchType(part)
@@ -501,7 +499,7 @@ end
 
 
 function interactiveTailoringUI:drawClothingInfo(x,y,w,h)
-    if not self:isMouseOver() then return end
+    if not self.toggleClothingInfo and not self:isMouseOver() then return end
     self:drawRect(x, y, w, h, 0.9, 0.1, 0.1, 0.1)
 
     local columnX = x + self.padding
