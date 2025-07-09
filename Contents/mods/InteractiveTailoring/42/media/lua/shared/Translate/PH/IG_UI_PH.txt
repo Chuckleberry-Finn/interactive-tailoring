@@ -1,0 +1,3 @@
+IGUI_PH = {
+    IGUI_TypeOfPadding = "%1 padding",
+}

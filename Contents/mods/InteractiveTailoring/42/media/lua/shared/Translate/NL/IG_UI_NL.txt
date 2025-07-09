@@ -1,0 +1,3 @@
+IGUI_NL = {
+    IGUI_TypeOfPadding = "%1 vulling",
+}

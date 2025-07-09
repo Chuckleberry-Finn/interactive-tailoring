@@ -1,0 +1,3 @@
+IGUI_CA = {
+    IGUI_TypeOfPadding = "%1 Padding",
+}

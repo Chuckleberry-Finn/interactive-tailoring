@@ -1,0 +1,3 @@
+IGUI_DE = {
+    IGUI_TypeOfPadding = "%1 Polsterung",
+}

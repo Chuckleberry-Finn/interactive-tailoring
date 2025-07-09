@@ -1,0 +1,3 @@
+IGUI_PTBR = {
+    IGUI_TypeOfPadding = "%1 preenchimento",
+}

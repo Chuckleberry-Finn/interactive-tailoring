@@ -1,0 +1,3 @@
+IGUI_FI = {
+    IGUI_TypeOfPadding = "%1 pehmuste",
+}
