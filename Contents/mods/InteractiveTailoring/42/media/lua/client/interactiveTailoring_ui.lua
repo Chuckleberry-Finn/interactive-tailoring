@@ -52,6 +52,26 @@ interactiveTailoringUI.patchColor = {
 }
 
 
+---@param patch ClothingPatch
+---@return boolean
+---Astaghfirullah, why do we need this for reading java fields of exposed classes.
+function interactiveTailoringUI:checkPatchHasHole(patch)
+    if not patch then return false end
+
+    local fieldStr = "public boolean zombie.inventory.types.Clothing$ClothingPatch.hasHole"
+    local fieldCount = getNumClassFields(patch)
+
+    for i = 0, fieldCount - 1 do
+        local field = getClassField(patch, i)
+        if field and tostring(field) == fieldStr then
+            return getClassFieldVal(patch, field) == true
+        end
+    end
+
+    return false
+end
+
+
 function interactiveTailoringUI:repairClothing(part, fabric)
     if not fabric or not self.clothing or not self.thread or not self.needle then return end
 
@@ -175,7 +195,9 @@ function interactiveTailoringUI:patchTooltip(fabric, part, name, tooltip)
 
         local patch = self.clothing:getPatchType(part)
         if patch then
-            tooltip.description = tooltip.description .. " <GREEN>".. getText("IGUI_TypeOfPatch", patch:getFabricTypeName()) .. " <LINE>"
+            self.patchHasHole[part] = self.patchHasHole[part] or self:checkPatchHasHole(patch)
+            local typeOf = self.patchHasHole[part] and getText("IGUI_TypeOfPatch", patch:getFabricTypeName()) or getText("IGUI_TypeOfPadding", patch:getFabricTypeName())
+            tooltip.description = tooltip.description .. " <GREEN>".. typeOf .. " <LINE>"
         end
     end
 
@@ -239,9 +261,10 @@ function interactiveTailoringUI:doContextMenu(part, x, y)
     local needle = self.needle
     local scissors = self.scissors
 
-    local fabric1 = self.rippedSheets and (self.rippedSheets:size() > 0) and self.rippedSheets:get(0)
-    local fabric2 = self.denimStrips and (self.denimStrips:size() > 0) and self.denimStrips:get(0)
-    local fabric3 = self.leatherStrips and (self.leatherStrips:size() > 0) and self.leatherStrips:get(0)
+    local fabrics = {}
+    for id,array in ipairs(self.materials) do
+        if array:size() > 0 then table.insert(fabrics, array:get(0)) end
+    end
 
     -- Require a needle to remove a patch.  Maybe scissors or a knife instead?
     local patch = self.clothing:getPatchType(part)
@@ -278,7 +301,7 @@ function interactiveTailoringUI:doContextMenu(part, x, y)
     end
 
     -- Cannot patch without thread, needle and fabric
-    if (not thread or not needle or (not fabric1 and not fabric2 and not fabric3)) then
+    if (not thread or not needle or (#fabrics <= 0)) then
         local patchOption = context:addOption(getText("ContextMenu_Patch"))
         patchOption.notAvailable = true
         local tooltip = ISInventoryPaneContextMenu.addToolTip()
@@ -286,15 +309,8 @@ function interactiveTailoringUI:doContextMenu(part, x, y)
         patchOption.toolTip = tooltip
     else
         local submenu
-        local allSubmenu
-        if fabric1 then
-            submenu = self:doPatch(fabric1, thread, needle, part, context, submenu, true)
-        end
-        if fabric2 then
-            submenu = self:doPatch(fabric2, thread, needle, part, context, submenu, true)
-        end
-        if fabric3 then
-            submenu = self:doPatch(fabric3, thread, needle, part, context, submenu, true)
+        for _,fabric in ipairs(fabrics) do
+            submenu = self:doPatch(fabric, thread, needle, part, context, submenu, true)
         end
     end
 
@@ -331,7 +347,11 @@ function interactiveTailoringUI:doDrawItem(y, item, alt)
     local patch = self.parent.clothing:getPatchType(part)
     if patch then
         y = y + self.parent.fontSmallHgt
-        self:drawText("- " .. getText("IGUI_TypeOfPatch", patch:getFabricTypeName()), 10, y, gr,gg,gb, 1, UIFont.Small)
+
+        self.parent.patchHasHole[part] = self.parent.patchHasHole[part] or self.parent:checkPatchHasHole(patch)
+        local typeOf = self.patchHasHole[part] and getText("IGUI_TypeOfPatch", patch:getFabricTypeName()) or getText("IGUI_TypeOfPadding", patch:getFabricTypeName())
+
+        self:drawText("- " .. typeOf, 10, y, gr,gg,gb, 1, UIFont.Small)
     end
 
     local x = 10
@@ -788,13 +808,19 @@ function interactiveTailoringUI:prerender()
 
     self:addMaterialButtons()
 
-    local rs = self.materialButtons.RippedSheets.active and self.rippedSheets:size() or 0
-    local ds = self.materialButtons.DenimStrips.active and self.denimStrips:size() or 0
-    local ls = self.materialButtons.LeatherStrips.active and self.leatherStrips:size() or 0
+    local total = 0
+    local materialOrder = {}
+    for ID,buttonData in pairs(self.materialButtons) do
+        local mats = self.materials[ID]
+        local matCount = mats and buttonData.active and mats:size() or 0
+        if matCount > 0 then
+            table.insert(materialOrder, { id = ID, count = matCount })
+            total = total + matCount
+        end
+    end
 
-    local total = rs + ds + ls
-    local stripScrolls = math.max(0, total - max-1)
-    self.sidebarScroll = math.max(0,math.min(stripScrolls, self.sidebarScroll))
+    local stripScrolls = math.max(0, total - max - 1)
+    self.sidebarScroll = math.max(0, math.min(stripScrolls, self.sidebarScroll))
 
     self.hoverOverMaterial = nil
     for i = 0, max do
@@ -802,13 +828,17 @@ function interactiveTailoringUI:prerender()
         local _y = math.floor(i / width)
 
         local index = i + self.sidebarScroll
+        local runningIndex = 0
         local piece, strip
-        if index < rs then
-            piece, strip = self:getMaterialAtIndex(index, self.rippedSheets)
-        elseif index < rs + ds then
-            piece, strip = self:getMaterialAtIndex(index - rs, self.denimStrips)
-        elseif index < rs + ds + ls then
-            piece, strip = self:getMaterialAtIndex(index - rs - ds, self.leatherStrips)
+
+        for _, entry in ipairs(materialOrder) do
+            local nextIndex = runningIndex + entry.count
+            if index < nextIndex then
+                local localIndex = index - runningIndex
+                piece, strip = self:getMaterialAtIndex(localIndex, self.materials[entry.id])
+                break
+            end
+            runningIndex = nextIndex
         end
 
         if piece and strip then
@@ -964,18 +994,11 @@ function interactiveTailoringUI:fetchMaterials()
     if self.inventoryCheck == contentWeight then return end
     self.inventoryCheck = contentWeight
 
-    self.rippedSheets = inv:getItemsFromType("RippedSheets")
-    self:applyDataToMaterials(self.rippedSheets)
-
-
-
-    self.denimStrips = inv:getItemsFromType("DenimStrips")
-    self:applyDataToMaterials(self.denimStrips)
-
-
-
-    self.leatherStrips = inv:getItemsFromType("LeatherStrips")
-    self:applyDataToMaterials(self.leatherStrips)
+    local typesOf = {"RippedSheets","DenimStrips","LeatherStrips"}
+    for _,ID in ipairs(typesOf) do
+        self.materials[ID] = inv:getItemsFromType(ID)
+        self:applyDataToMaterials(self.materials[ID])
+    end
 end
 
 
@@ -983,7 +1006,6 @@ function interactiveTailoringUI:renderMaterialButtons(ID, _x, _y, buttonSize, te
     if not self.materialButtons[ID] then self.materialButtons[ID] = {x=_x, y=_y, x2=_x+buttonSize, y2=_y+buttonSize, active=true} end
     self:drawRect(_x, _y, buttonSize, buttonSize, self.materialButtons[ID].active and 0.5 or 0.1,1,1,1)
     self:drawTextureScaled(self.materialTextures[ID], _x+2, _y+2, textureSize, textureSize, self.materialButtons[ID].active and 1 or 0.3, 1, 1, 1)
-
 end
 
 
@@ -1242,6 +1264,7 @@ function interactiveTailoringUI:new(player, clothing)
     pieceHandler.buildPieceTypeIndex()
     o:getAreas()
     o.parts = {}
+    o.patchHasHole = {}
 
     o.sounds = {}
     o.sounds.activate = "UIActivateButton"
@@ -1249,6 +1272,7 @@ function interactiveTailoringUI:new(player, clothing)
     o.clothingUI = {}
     o.clothingUI.icon = clothing:getTex()
 
+    o.materials = {}
     o.materialButtons = {}
 
     o.clothingColor = {
