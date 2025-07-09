@@ -11,6 +11,7 @@ interactiveTailoringUI.fontSmallHgt = getTextManager():getFontHeight(UIFont.NewS
 interactiveTailoringUI.fabricTexture = getTexture("media/textures/fabric.png")
 interactiveTailoringUI.holeTexture = getTexture("media/textures/hole.png")
 interactiveTailoringUI.coverageTexture = getTexture("media/textures/coverage.png")
+interactiveTailoringUI.stitchTexture = getTexture("media/textures/stitch.png")
 
 interactiveTailoringUI.brokenItemIcon = getTexture("media/ui/icon_broken.png")
 
@@ -670,70 +671,83 @@ function interactiveTailoringUI:prerender()
         local visual = self.clothing:getVisual()
         local stainSize = 1
 
-        local textureToDraw = {}
+        local textureToDraw1 = {}
+        local textureToDraw2 = {}
 
         for part, area in pairs(mdAreas) do
             local _part = BloodBodyPartType.FromIndex(part)
             local blood, dirt = visual:getBlood(_part), visual:getDirt(_part)
             local xy = area.xy
-            for _, flatIndex in ipairs(xy) do
+            local patch = self.clothing:getPatchType(_part)
+            local patchType = patch and patch:getFabricType()
+            local stitches = patch and pieceHandler.pieceTypes[area.id.."_"..area.rot].stitches
+
+            local hole = self.clothing:getVisual():getHole(_part) > 0
+
+            for n, flatIndex in ipairs(xy) do
                 local _x = ((flatIndex - 1) % self.gridSizeW) + 1
                 local _y = math.floor((flatIndex - 1) / self.gridSizeW) + 1
 
-                local patch = self.clothing:getPatchType(_part)
-                local patchType = patch and patch:getFabricType()
                 local drawTexture
-                local addToEdges = 0
                 local drawColor = { a = 1, r = 1, g = 1, b = 1 }
 
+                local texX, texY = self.padding + (self.gridScale * (_x - 0.5)), self.gridY + ((_y - 0.5) * self.gridScale)
 
                 if blood > 0 then
-                    self:DrawTextureAngleScaled(self.stainTexture, self.padding+(self.gridScale*(_x-1))+18, self.gridY+((_y-1)*self.gridScale)+18,
+                    self:DrawTextureAngleScaled(self.stainTexture, texX, texY,
                             area.rot, stainSize, self.stainColor.blood.r, self.stainColor.blood.g, self.stainColor.blood.b, blood)
                 end
 
 
                 if dirt > 0 then
-                    self:DrawTextureAngleScaled(self.stainTexture, self.padding+(self.gridScale*(_x-1))+18, self.gridY+((_y-1)*self.gridScale)+18,
+                    self:DrawTextureAngleScaled(self.stainTexture, texX, texY,
                             area.rot, stainSize, self.stainColor.dirt.r, self.stainColor.dirt.g, self.stainColor.dirt.b, dirt)
                 end
 
                 if patch then
                     drawColor = self.patchColor[patchType]
                     drawTexture = self.fabricTexture
-                elseif self.clothing:getVisual():getHole(_part) > 0 then
-                    addToEdges = 2
+
+                elseif hole then
                     drawTexture = self.holeTexture
+
                 else
-                    drawColor = { a = 0.1, r = 1, g = 1, b = 1 }
+                    drawColor = { a = 0.2, r = 1, g = 1, b = 1 }
                     drawTexture = self.coverageTexture
+
                 end
 
                 if drawTexture then
 
-                    table.insert(textureToDraw, {
-                        drawTexture, self.padding + (self.gridScale * (_x - 1)) - addToEdges, self.gridY + ((_y - 1) * self.gridScale) - addToEdges,
-                        self.gridScale + (addToEdges * 2), self.gridScale + (addToEdges * 2), drawColor.a, drawColor.r, drawColor.g, drawColor.b,
-                    })
+                    if (not hole) then table.insert(textureToDraw1, { drawTexture, texX, texY, 0, 1, drawColor.r, drawColor.g, drawColor.b, drawColor.a }) end
 
-                    if self.hoverOverPart == _part and self:isMouseOver() then
-                        self.mouseOverFade = (self.mouseOverFade or 0.1) + (self.mouseOverFadeRate or 0.003)
-                        self.mouseOverFadeRate = ((self.mouseOverFade >= 0.3) and -0.003) or ((self.mouseOverFade <= 0.1) and 0.003) or self.mouseOverFadeRate
-                        self:drawTextureScaled(self.coverageTexture, self.padding + (self.gridScale * (_x - 1)), self.gridY + ((_y - 1) * self.gridScale),
-                                self.gridScale, self.gridScale, self.mouseOverFade, 1, 1, 1)
-
-                        table.insert(textureToDraw, {
-                            self.coverageTexture, self.padding + (self.gridScale * (_x - 1)), self.gridY + ((_y - 1) * self.gridScale),
-                            self.gridScale, self.gridScale, self.mouseOverFade, drawColor.r, drawColor.g, drawColor.b
-                        })
+                    if stitches then
+                        local s = stitches[n]
+                        local stitchColor = area.sc or {r=1, g=0.5, b=0.5}
+                        for _,angle in ipairs(s) do
+                            table.insert(textureToDraw2, { self.stitchTexture, texX, texY, angle, 0.97, stitchColor.r, stitchColor.g, stitchColor.b, 1 })
+                        end
                     end
+
+                    if hole then table.insert(textureToDraw2, { drawTexture, texX, texY, 0, 1, drawColor.r, drawColor.g, drawColor.b, drawColor.a }) end
+
+                    if (not hole) and self.hoverOverPart == _part and self:isMouseOver() then
+                        self.mouseOverFade = (self.mouseOverFade or 0.05) + (self.mouseOverFadeRate or 0.005)
+                        self.mouseOverFadeRate = ((self.mouseOverFade >= 0.3) and -0.005) or ((self.mouseOverFade <= 0.05) and 0.005) or self.mouseOverFadeRate
+                        table.insert(textureToDraw2, { self.coverageTexture, texX, texY, 0, 1, 1, 1, 1, self.mouseOverFade })
+                    end
+
                 end
             end
         end
 
-        for _,call in pairs(textureToDraw) do
-            local tex, x, y, w, h, a, r, g, b = call[1], call[2], call[3], call[4], call[5], call[6], call[7], call[8], call[9]
-            self:drawTextureScaled(tex, x, y, w, h, a, r, g, b)
+        for _,call in ipairs(textureToDraw1) do
+            local tex, x, y, angle, scale, a, r, g, b = call[1], call[2], call[3], call[4], call[5], call[6], call[7], call[8], call[9]
+            self:DrawTextureAngleScaled(tex, x, y, angle, scale, a, r, g, b)
+        end
+        for _,call in ipairs(textureToDraw2) do
+            local tex, x, y, angle, scale, a, r, g, b = call[1], call[2], call[3], call[4], call[5], call[6], call[7], call[8], call[9]
+            self:DrawTextureAngleScaled(tex, x, y, angle, scale, a, r, g, b)
         end
     end
     self:drawRectBorder(self.gridX-2, self.gridY-2, self.gridW+4, self.gridH+4, self.toggleClothingInfo and 0.8 or 0.4, 1, 1, 1)
@@ -1040,6 +1054,7 @@ function interactiveTailoringUI:getAreas()
                 id = piece.id,
                 rot = piece.rot,
                 xy = {},
+                sc = {},
             }
 
             local validPlacement = false
