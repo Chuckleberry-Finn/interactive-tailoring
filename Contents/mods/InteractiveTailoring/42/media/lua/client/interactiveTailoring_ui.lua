@@ -155,6 +155,7 @@ function interactiveTailoringUI:patchMatchesPart(fabric, partIndex)
 end
 
 
+--- This code was taken and cannibalized from vanilla
 function interactiveTailoringUI:patchTooltip(fabric, part, name, tooltip)
     tooltip = tooltip or ISInventoryPaneContextMenu.addToolTip()
 
@@ -205,6 +206,7 @@ function interactiveTailoringUI:patchTooltip(fabric, part, name, tooltip)
 end
 
 
+--- This code was taken and cannibalized from vanilla
 function interactiveTailoringUI:doPatch(fabric, thread, needle, part, context, submenu)
     if not self.clothing:getFabricType() then return end
 
@@ -224,7 +226,7 @@ function interactiveTailoringUI:doPatch(fabric, thread, needle, part, context, s
         error "patch ~= nil"
     end
 
-    if not submenu then -- after the 2nd iteration we have a submenu, we simply add our different fabric to it
+    if not submenu then
         local option = context:addOption(text)
         submenu = context:getNew(context)
         context:addSubMenu(option, submenu)
@@ -234,7 +236,6 @@ function interactiveTailoringUI:doPatch(fabric, thread, needle, part, context, s
     local tooltip = self:patchTooltip(fabric, part)
     option.toolTip = tooltip
 
-    -- Patch/Add pad all
     local allOption
     local allTooltip = ISInventoryPaneContextMenu.addToolTip()
 
@@ -254,6 +255,7 @@ function interactiveTailoringUI:doPatch(fabric, thread, needle, part, context, s
 end
 
 
+--- This code was taken and cannibalized from vanilla
 function interactiveTailoringUI:doContextMenu(part, x, y)
     local context = ISContextMenu.get(self.player:getPlayerNum(), x, y)
 
@@ -266,15 +268,13 @@ function interactiveTailoringUI:doContextMenu(part, x, y)
         if array:size() > 0 then table.insert(fabrics, array:get(0)) end
     end
 
-    -- Require a needle to remove a patch.  Maybe scissors or a knife instead?
     local patch = self.clothing:getPatchType(part)
     if patch then
-        -- Remove specific patch
+
         local removeOption = context:addOption(getText("ContextMenu_RemovePatch"), self.player, ISInventoryPaneContextMenu.removePatch, self.clothing, part, scissors)
         local tooltip = ISInventoryPaneContextMenu.addToolTip()
         removeOption.toolTip = tooltip
 
-        -- Remove all patches
         local patchesCount = self.clothing:getPatchesNumber()
         local removeAllOption
         local removeAllTooltip
@@ -300,7 +300,6 @@ function interactiveTailoringUI:doContextMenu(part, x, y)
         return context
     end
 
-    -- Cannot patch without thread, needle and fabric
     if (not thread or not needle or (#fabrics <= 0)) then
         local patchOption = context:addOption(getText("ContextMenu_Patch"))
         patchOption.notAvailable = true
