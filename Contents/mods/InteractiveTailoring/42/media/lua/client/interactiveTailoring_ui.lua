@@ -423,7 +423,7 @@ function interactiveTailoringUI:onMouseWheel(del)
 
         for tool,value in pairs(self.toolScroll) do
             local toolZone = self.mouseOverZones[tool]
-            if x >= toolZone.x and x <= toolZone.x+toolZone.w and y >= toolZone.y and y <= toolZone.y+sidebarZone.h then
+            if x >= toolZone.x and x <= toolZone.x+toolZone.w and y >= toolZone.y and y <= toolZone.y+toolZone.h then
                 self[tool] = false
                 self.toolScroll[tool] = self.toolScroll[tool]+(del)
             end
@@ -478,7 +478,12 @@ function interactiveTailoringUI:drawTool(x,y,forThis,typeOf,tag,showUses)
     local zone = self.mouseOverZones[forThis]
 
     if self[forThis] then
-        self:drawRectBorder(zone.x-2, zone.y, zone.w+4, zone.h+4, 0.7, 0.5, 0.5, 0.5)
+
+        local mouseX, mouseY = self:getMouseX(), self:getMouseY()
+        local mouseOver = (mouseX >= zone.x and mouseX <= zone.x+zone.w and mouseY >= zone.y and mouseY <= zone.y+zone.h)
+
+        self:drawRectBorder(zone.x-2, zone.y, zone.w+4, zone.h+4, mouseOver and 0.8 or 0.3, 1, 1, 1)
+
         if showUses then self:drawBar(zone.x, zone.y+2, zone.w, zone.h, self[forThis]:getCurrentUsesFloat(), true, true) end
         self:drawItemIcon(self[forThis], zone.x, zone.y+2, 1, zone.w, zone.h)
     else
@@ -1202,9 +1207,23 @@ function interactiveTailoringUI:onMouseDown(x, y)
 
     if x >= self.mouseOverZones.sidebar.x and x <= self.mouseOverZones.sidebar.x+self.mouseOverZones.sidebar.w
             and y >= self.mouseOverZones.sidebar.y and y <= self.mouseOverZones.sidebar.y+self.mouseOverZones.sidebar.h then
-        if (not self.toggleClothingInfo) and self.hoverOverMaterial then self.draggingMaterial = self.hoverOverMaterial end
+
+        if (not self.toggleClothingInfo) and self.hoverOverMaterial then
+            self.draggingMaterial = self.hoverOverMaterial
+        end
         return
     end
+
+    for tool,value in pairs(self.toolScroll) do
+        local toolZone = self.mouseOverZones[tool]
+        if x >= toolZone.x and x <= toolZone.x+toolZone.w and y >= toolZone.y and y <= toolZone.y+toolZone.h then
+            self[tool] = false
+            self.toolScroll[tool] = self.toolScroll[tool]+1
+            getSoundManager():playUISound(self.sounds.activate)
+            return
+        end
+    end
+
     ISCollapsableWindow.onMouseDown(self, x, y)
 end
 
