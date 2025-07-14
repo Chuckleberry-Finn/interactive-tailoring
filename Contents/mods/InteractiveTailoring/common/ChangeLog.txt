@@ -10,3 +10,7 @@ link3 = Github = https://steamcommunity.com/linkfilter/?u=https://github.com/Chu
     Match patches' shapes to repair holes, and pad clothes.
 - Change: Scissors are required to remove patches.
 [ ------ ]
+
+[ 7/14/2025 ]
+- Added sandbox option for the bonus XP rewarded for matching pieces (mismatched will always be 50%).
+[ ------ ]
