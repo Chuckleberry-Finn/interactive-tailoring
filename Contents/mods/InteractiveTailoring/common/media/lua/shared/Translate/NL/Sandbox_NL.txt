@@ -1,0 +1,6 @@
+Sandbox_NL = {
+    Sandbox_InteractiveTailoring = "Interactieve maatwerk",
+
+    Sandbox_InteractiveTailoring_BonusXP = "Bonus XP beloond",
+    Sandbox_InteractiveTailoring_BonusXP_tooltip = "Bonus XP beloond voor wedstrijdstukken. <Br> Opmerking: niet -overeenkomende verdient 50%.",
+}

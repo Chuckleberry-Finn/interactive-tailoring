@@ -1,0 +1,6 @@
+Sandbox_TH = {
+    Sandbox_InteractiveTailoring = "การตัดเย็บแบบโต้ตอบ",
+
+    Sandbox_InteractiveTailoring_BonusXP = "โบนัส XP ได้รับรางวัล",
+    Sandbox_InteractiveTailoring_BonusXP_tooltip = "โบนัส XP ได้รับรางวัลสำหรับการจับคู่ชิ้นส่วน <br> หมายเหตุ: ไม่ตรงกันได้รับ 50%",
+}

@@ -1,3 +1,0 @@
-IGUI_IT = {
-    IGUI_TypeOfPadding = "%1 imbottitura",
-}

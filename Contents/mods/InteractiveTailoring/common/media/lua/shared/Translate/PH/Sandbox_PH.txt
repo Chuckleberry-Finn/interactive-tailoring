@@ -1,0 +1,6 @@
+Sandbox_PH = {
+    Sandbox_InteractiveTailoring = "Interactive na pag -aayos",
+
+    Sandbox_InteractiveTailoring_BonusXP = "Gantimpala ang Bonus XP",
+    Sandbox_InteractiveTailoring_BonusXP_tooltip = "Bonus XP Gantimpala para sa mga tugma ng mga piraso. <Br> Tandaan: Ang mismatched ay kumikita ng 50%.",
+}

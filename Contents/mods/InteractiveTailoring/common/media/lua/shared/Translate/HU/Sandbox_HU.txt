@@ -1,0 +1,6 @@
+Sandbox_HU = {
+    Sandbox_InteractiveTailoring = "Interaktív szabás",
+
+    Sandbox_InteractiveTailoring_BonusXP = "Bónusz XP jutalom",
+    Sandbox_InteractiveTailoring_BonusXP_tooltip = "Bónusz XP jutalmazott a mérkőzésekért. <Br> Megjegyzés: Az eltérés 50%-ot keres.",
+}

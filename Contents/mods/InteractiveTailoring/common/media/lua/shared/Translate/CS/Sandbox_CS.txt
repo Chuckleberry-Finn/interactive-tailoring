@@ -1,0 +1,6 @@
+Sandbox_CS = {
+    Sandbox_InteractiveTailoring = "Interaktivní krejèovství",
+
+    Sandbox_InteractiveTailoring_BonusXP = "Bonus XP odmìnìn",
+    Sandbox_InteractiveTailoring_BonusXP_tooltip = "Bonus XP odmìnìn za kusy zápasù.",
+}

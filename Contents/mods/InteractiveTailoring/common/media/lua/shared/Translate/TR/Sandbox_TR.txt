@@ -1,0 +1,6 @@
+Sandbox_TR = {
+    Sandbox_InteractiveTailoring = "Etkileşimli terzilik",
+
+    Sandbox_InteractiveTailoring_BonusXP = "Bonus XP Ödüllü",
+    Sandbox_InteractiveTailoring_BonusXP_tooltip = "Bonus XP maç parçaları için ödüllendirildi. <Br> Not: Uyumsuz%50 kazanır.",
+}

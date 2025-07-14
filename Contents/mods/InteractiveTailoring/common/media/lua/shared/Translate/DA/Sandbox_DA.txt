@@ -1,0 +1,6 @@
+Sandbox_DA = {
+    Sandbox_InteractiveTailoring = "Interaktiv skræddersyning",
+
+    Sandbox_InteractiveTailoring_BonusXP = "Bonus XP belønnet",
+    Sandbox_InteractiveTailoring_BonusXP_tooltip = "Bonus XP belønnet for kampe stykker. <Br> Bemærk: Uoverensstemmende tjener 50%.",
+}

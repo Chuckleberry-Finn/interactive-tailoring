@@ -1,0 +1,6 @@
+Sandbox_UA = {
+    Sandbox_InteractiveTailoring = "Інтерактивне пошиття",
+
+    Sandbox_InteractiveTailoring_BonusXP = "Бонус XP винагороджена",
+    Sandbox_InteractiveTailoring_BonusXP_tooltip = "Бонус XP винагороджений за матчі. <Br> Примітка: невідповідність заробляє 50%.",
+}

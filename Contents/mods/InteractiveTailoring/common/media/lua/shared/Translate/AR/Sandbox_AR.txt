@@ -1,0 +1,6 @@
+Sandbox_AR = {
+    Sandbox_InteractiveTailoring = "Sastrería interactiva",
+
+    Sandbox_InteractiveTailoring_BonusXP = "Bono XP recompensado",
+    Sandbox_InteractiveTailoring_BonusXP_tooltip = "Bonus XP recompensado por piezas de partidos. <Br> Nota: Mishatched gana 50%.",
+}

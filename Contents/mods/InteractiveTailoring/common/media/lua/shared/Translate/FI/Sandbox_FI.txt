@@ -1,0 +1,6 @@
+Sandbox_FI = {
+    Sandbox_InteractiveTailoring = "Interaktiivinen räätälöinti",
+
+    Sandbox_InteractiveTailoring_BonusXP = "Bonus XP palkittu",
+    Sandbox_InteractiveTailoring_BonusXP_tooltip = "Bonus XP palkittu ottelupaloista. <Br> Huomaa: Väärättömät ansaitsee 50%.",
+}

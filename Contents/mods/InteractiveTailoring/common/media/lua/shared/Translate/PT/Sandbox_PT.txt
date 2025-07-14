@@ -1,0 +1,6 @@
+Sandbox_PT = {
+    Sandbox_InteractiveTailoring = "Alfaiataria interativa",
+
+    Sandbox_InteractiveTailoring_BonusXP = "Bônus XP recompensado",
+    Sandbox_InteractiveTailoring_BonusXP_tooltip = "Bônus XP recompensado pelas peças de fósforos. <Br> Nota: A incompatibilidade ganha 50%.",
+}

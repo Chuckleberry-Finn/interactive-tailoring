@@ -1,0 +1,6 @@
+Sandbox_IT = {
+    Sandbox_InteractiveTailoring = "Sartoria interattiva",
+
+    Sandbox_InteractiveTailoring_BonusXP = "Bonus XP premiato",
+    Sandbox_InteractiveTailoring_BonusXP_tooltip = "Bonus XP ricompensato per i pezzi di corrispondenza. <Br> Nota: non corrispondente guadagna il 50%.",
+}

@@ -1,0 +1,6 @@
+Sandbox_NO = {
+    Sandbox_InteractiveTailoring = "Interaktiv skreddersøm",
+
+    Sandbox_InteractiveTailoring_BonusXP = "Bonus XP belønnet",
+    Sandbox_InteractiveTailoring_BonusXP_tooltip = "Bonus XP belønnet for matcher.",
+}

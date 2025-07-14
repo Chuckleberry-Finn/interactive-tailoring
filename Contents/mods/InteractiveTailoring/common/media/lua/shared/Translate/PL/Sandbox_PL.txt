@@ -1,0 +1,6 @@
+Sandbox_PL = {
+    Sandbox_InteractiveTailoring = "Interaktywne krawiectwo",
+
+    Sandbox_InteractiveTailoring_BonusXP = "Bonus XP nagrodzony",
+    Sandbox_InteractiveTailoring_BonusXP_tooltip = "Bonus XP nagrodzony za mecze.",
+}

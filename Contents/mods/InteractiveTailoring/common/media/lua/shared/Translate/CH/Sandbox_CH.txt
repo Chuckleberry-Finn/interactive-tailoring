@@ -1,0 +1,6 @@
+Sandbox_CH = {
+    Sandbox_InteractiveTailoring = "互動剪裁",
+
+    Sandbox_InteractiveTailoring_BonusXP = "獎勵XP獎勵",
+    Sandbox_InteractiveTailoring_BonusXP_tooltip = "獎勵XP獎勵了比賽。 <br>注意：不匹配的收入為50％。",
+}

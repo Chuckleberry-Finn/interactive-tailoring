@@ -1,3 +1,0 @@
-IGUI_PT = {
-    IGUI_TypeOfPadding = "%1 preenchimento",
-}

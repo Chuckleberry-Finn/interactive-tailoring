@@ -1,3 +1,0 @@
-IGUI_RO = {
-    IGUI_TypeOfPadding = "%1 Padding",
-}

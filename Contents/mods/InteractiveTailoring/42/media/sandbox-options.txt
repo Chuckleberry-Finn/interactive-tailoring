@@ -1,0 +1,8 @@
+VERSION = 1,
+
+option InteractiveTailoring.BonusXP
+{
+	type = integer, min = 0, max = 9999, default = 12,
+	page = InteractiveTailoring, translation = InteractiveTailoring_BonusXP,
+}
+

@@ -89,8 +89,9 @@ function interactiveTailoringUI:repairClothing(part, fabric)
     end
 
     local action = ISRepairClothing:new(self.player, self.clothing, part, fabric, self.thread, self.needle)
-    local xp = self:patchMatchesPart(fabric, part:index()) and 12 or 6
-    action.patchMatchesPart = xp
+    local xp = SandboxVars.InteractiveTailoring.BonusXP or 12
+    local finalXP = self:patchMatchesPart(fabric, part:index()) and xp or (xp/2)
+    action.patchMatchesPart = finalXP
     ISTimedActionQueue.add(action)
 end
 

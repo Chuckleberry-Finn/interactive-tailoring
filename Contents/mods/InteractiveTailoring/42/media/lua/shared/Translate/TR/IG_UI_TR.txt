@@ -1,3 +1,0 @@
-IGUI_TR = {
-    IGUI_TypeOfPadding = "%1 dolgu",
-}

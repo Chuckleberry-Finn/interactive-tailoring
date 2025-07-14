@@ -1,0 +1,6 @@
+Sandbox_RO = {
+    Sandbox_InteractiveTailoring = "Croitorie interactivă",
+
+    Sandbox_InteractiveTailoring_BonusXP = "Bonus XP recompensat",
+    Sandbox_InteractiveTailoring_BonusXP_tooltip = "Bonus XP recompensat pentru piesele de potriviri. <Br> Notă: nepotrivirea câștigă 50%.",
+}

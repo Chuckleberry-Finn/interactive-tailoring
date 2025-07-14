@@ -1,0 +1,6 @@
+Sandbox_JP = {
+    Sandbox_InteractiveTailoring = "インタラクティブな仕立て",
+
+    Sandbox_InteractiveTailoring_BonusXP = "ボーナスXPは報われました",
+    Sandbox_InteractiveTailoring_BonusXP_tooltip = "マッチのピースに対して報酬が与えられたボーナスXP。",
+}
