@@ -14,3 +14,7 @@ link3 = Github = https://steamcommunity.com/linkfilter/?u=https://github.com/Chu
 [ 7/14/2025 ]
 - Added sandbox option for the bonus XP rewarded for matching pieces (mismatched will always be 50%).
 [ ------ ]
+
+[ 7/15/2025 ]
+- Fixed edge-case with UI-render.
+[ ------ ]

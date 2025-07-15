@@ -368,7 +368,7 @@ function interactiveTailoringUI:doDrawItem(y, item, alt)
         self:drawText(bodyPartAction.jobType, x + 4, y, 0.8, 0.8, 0.8, 1, UIFont.Small)
     else
         local actionQueue = ISTimedActionQueue.getTimedActionQueue(UI.player)
-        if actionQueue and actionQueue.queue and UI.actionToBodyPart and (UI.actionToBodyPart[actionQueue.queue[1]] == part) then
+        if actionQueue and actionQueue.queue and actionQueue.queue[1] and UI.actionToBodyPart and (UI.actionToBodyPart[actionQueue.queue[1]] == part) then
             y = y + self.parent.fontSmallHgt
             self:drawProgressBar(x, y, self.width - 10 - x, self.parent.fontSmallHgt, actionQueue.queue[1]:getJobDelta(), fgBar)
             self:drawText(actionQueue.queue[1].jobType or "???", x + 4, y, 0.8, 0.8, 0.8, 1, UIFont.Small) -- jobType is a hack for CraftingUI and ISHealthPanel also
