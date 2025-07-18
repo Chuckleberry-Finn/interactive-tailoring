@@ -18,3 +18,7 @@ link3 = Github = https://steamcommunity.com/linkfilter/?u=https://github.com/Chu
 [ 7/15/2025 ]
 - Fixed edge-case with UI-render.
 [ ------ ]
+
+[ 7/18/2025 ]
+- Fixed another edge-case with UI-render.
+[ ------ ]
