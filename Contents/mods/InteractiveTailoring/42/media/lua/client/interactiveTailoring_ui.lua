@@ -710,6 +710,15 @@ function interactiveTailoringUI:prerender()
         local textureToDraw1 = {}
         local textureToDraw2 = {}
 
+        local coverageColor = { a = 0.2, r = 1, g = 1, b = 1 }
+        local luminosity = self.clothingColor.r*0.2126 + self.clothingColor.g*0.7152 + self.clothingColor.b*0.0722
+        if (luminosity < 0.46235) then
+            coverageColor.r, coverageColor.g, coverageColor.b, coverageColor.a = 1.0, 1.0, 1.0, 0.2
+        else
+            coverageColor.r, coverageColor.g, coverageColor.b, coverageColor.a = 0.1, 0.1, 0.1, 0.4
+        end
+
+
         for part, area in pairs(mdAreas) do
             local _part = BloodBodyPartType.FromIndex(part)
             local blood, dirt = visual:getBlood(_part), visual:getDirt(_part)
@@ -748,9 +757,8 @@ function interactiveTailoringUI:prerender()
                     drawTexture = self.holeTexture
 
                 else
-                    drawColor = { a = 0.2, r = 1, g = 1, b = 1 }
+                    drawColor = coverageColor
                     drawTexture = self.coverageTexture
-
                 end
 
                 if drawTexture then
@@ -770,7 +778,7 @@ function interactiveTailoringUI:prerender()
                     if self.hoverOverPart == _part and self:isMouseOver() then
                         self.mouseOverFade = (self.mouseOverFade or 0.05) + (self.mouseOverFadeRate or 0.005)
                         self.mouseOverFadeRate = ((self.mouseOverFade >= 0.3) and -0.005) or ((self.mouseOverFade <= 0.05) and 0.005) or self.mouseOverFadeRate
-                        table.insert(textureToDraw2, { hole and self.holeCoverageTexture or self.coverageTexture, texX, texY, 0, 1, 1, 1, 1, self.mouseOverFade })
+                        table.insert(textureToDraw2, { hole and self.holeCoverageTexture or self.coverageTexture, texX, texY, 0, 1, coverageColor.r, coverageColor.g, coverageColor.b, self.mouseOverFade })
                     end
 
                 end
@@ -1274,10 +1282,12 @@ end
 ---@param clothing InventoryItem|Clothing
 function interactiveTailoringUI:new(player, clothing)
 
-    local gridSizeW, gridSizeH, gridScale = 10, 11, 32--px
-    local padding = 10
-
     local screenW, screenH = getCore():getScreenWidth(), getCore():getScreenHeight()
+
+    local gridScale = (getCore():getScreenWidth()/1920 > 1.5) and 64 or 32
+
+    local gridSizeW, gridSizeH = 10, 11
+    local padding = 10
 
     local w = ((padding*3) + (gridSizeW+3)*gridScale)
     local h = ((padding*3) + (gridSizeH+3)*gridScale) + ISCollapsableWindow.TitleBarHeight()
