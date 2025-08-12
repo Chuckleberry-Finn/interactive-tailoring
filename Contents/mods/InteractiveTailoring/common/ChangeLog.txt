@@ -31,3 +31,7 @@ link3 = Github = https://steamcommunity.com/linkfilter/?u=https://github.com/Chu
 [ 8/12/25 ]
 - Scales the rest of the UI.
 [ ------ ]
+
+[ 8/12/25 - Hotfix 1 ]
+- Centered the material icons.
+[ ------ ]
