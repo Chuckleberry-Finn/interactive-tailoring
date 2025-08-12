@@ -35,3 +35,7 @@ link3 = Github = https://steamcommunity.com/linkfilter/?u=https://github.com/Chu
 [ 8/12/25 - Hotfix 1 ]
 - Centered the material icons.
 [ ------ ]
+
+[ 8/12/25 - Hotfix 2 ]
+- Scaled Broken Icon
+[ ------ ]

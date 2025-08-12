@@ -823,7 +823,10 @@ function interactiveTailoringUI:prerender()
     self:drawItemIcon(self.clothing, clothingX, clothingY, 1, self.clothingUI.iW, self.clothingUI.iH)
 
     if self.clothing:isBroken() then
-        self:drawTextureScaled(self.brokenItemIcon, clothingX+self.clothingUI.iW-12, clothingY+self.clothingUI.iH-14, textureScale, textureScale, 1, 1, 1, 1)
+
+        local biSize = 11*textureScale
+
+        self:drawTextureScaled(self.brokenItemIcon, clothingX+self.clothingUI.iW-(biSize*1.1), clothingY+self.clothingUI.iH-(biSize*1.1), biSize, biSize, 1, 1, 1, 1)
     end
 
     if drawPin then
@@ -899,7 +902,8 @@ function interactiveTailoringUI:prerender()
                 self:drawRect(matX+1, matY+1, self.gridScale-2, self.gridScale-2, 0.1, 1, 1, 1)
             end
 
-            self:DrawTextureAngleScaled(getTexture("media/textures/"..piece.id.."_piece.png"), matX+16, matY+16, piece.rot, textureScale, color.r, color.g, color.b, color.a)
+
+            self:DrawTextureAngleScaled(getTexture("media/textures/"..piece.id.."_piece.png"), matX+(self.gridScale/2), matY+(self.gridScale/2), piece.rot, textureScale, color.r, color.g, color.b, color.a)
         end
     end
 
