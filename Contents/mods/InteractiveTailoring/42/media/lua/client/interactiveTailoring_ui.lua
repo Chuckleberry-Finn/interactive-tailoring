@@ -489,7 +489,7 @@ function interactiveTailoringUI:drawTool(x,y,forThis,typeOf,tag,showUses)
         self:drawItemIcon(self[forThis], zone.x, zone.y+2, 1, zone.w, zone.h)
     else
         self:drawRectBorder(zone.x-2, zone.y, zone.w+4, zone.h+4, self.failColor.a*0.66, self.failColor.r, self.failColor.g, self.failColor.b)
-        self:drawTexture(self.failToolTextures[forThis], zone.x, zone.y+2, self.failColor.a, self.failColor.r, self.failColor.g, self.failColor.b)
+        self:drawTextureScaled(self.failToolTextures[forThis], zone.x, zone.y+2, self.gridScale, self.gridScale, self.failColor.a, self.failColor.r, self.failColor.g, self.failColor.b)
     end
 end
 
@@ -671,7 +671,7 @@ function interactiveTailoringUI:render()
     if self.draggingMaterial then
         self:DrawTextureAngleScaled(getTexture("media/textures/"..self.draggingMaterial.id.."_piece.png"),
                 getMouseX()-self.x, getMouseY()-self.y, self.draggingMaterial.rot,
-                4, self.draggingMaterial.color.r, self.draggingMaterial.color.g, self.draggingMaterial.color.b, 1)
+                4 * (self.gridScale/32), self.draggingMaterial.color.r, self.draggingMaterial.color.g, self.draggingMaterial.color.b, 1)
     end
 end
 
@@ -686,6 +686,8 @@ function interactiveTailoringUI:prerender()
     if not self.mouseOverZones.gridArea then
         self.mouseOverZones.gridArea = { x=self.gridX, y=self.gridY, x2=self.gridX+self.gridW, y2=self.gridY+self.gridH }
     end
+
+    local textureScale = 1 * (self.gridScale/32)
 
     ---fabric
     for _x=0, self.gridSizeW-1 do
@@ -705,7 +707,6 @@ function interactiveTailoringUI:prerender()
 
         ---@type ItemVisual
         local visual = self.clothing:getVisual()
-        local stainSize = 1
 
         local textureToDraw1 = {}
         local textureToDraw2 = {}
@@ -740,13 +741,13 @@ function interactiveTailoringUI:prerender()
 
                 if blood > 0 then
                     self:DrawTextureAngleScaled(self.stainTexture, texX, texY,
-                            area.rot, stainSize, self.stainColor.blood.r, self.stainColor.blood.g, self.stainColor.blood.b, blood)
+                            area.rot, textureScale, self.stainColor.blood.r, self.stainColor.blood.g, self.stainColor.blood.b, blood)
                 end
 
 
                 if dirt > 0 then
                     self:DrawTextureAngleScaled(self.stainTexture, texX, texY,
-                            area.rot, stainSize, self.stainColor.dirt.r, self.stainColor.dirt.g, self.stainColor.dirt.b, dirt)
+                            area.rot, textureScale, self.stainColor.dirt.r, self.stainColor.dirt.g, self.stainColor.dirt.b, dirt)
                 end
 
                 if patch then
@@ -763,22 +764,22 @@ function interactiveTailoringUI:prerender()
 
                 if drawTexture then
 
-                    if (not hole) then table.insert(textureToDraw1, { drawTexture, texX, texY, 0, 1, drawColor.r, drawColor.g, drawColor.b, drawColor.a }) end
+                    if (not hole) then table.insert(textureToDraw1, { drawTexture, texX, texY, 0, textureScale, drawColor.r, drawColor.g, drawColor.b, drawColor.a }) end
 
                     if stitches then
                         local s = stitches[n]
                         local stitchColor = area.sc or {r=1, g=0.5, b=0.5}
                         for _,angle in ipairs(s) do
-                            table.insert(textureToDraw2, { self.stitchTexture, texX, texY, angle, 1, stitchColor.r, stitchColor.g, stitchColor.b, 1 })
+                            table.insert(textureToDraw2, { self.stitchTexture, texX, texY, angle, textureScale, stitchColor.r, stitchColor.g, stitchColor.b, 1 })
                         end
                     end
 
-                    if hole then table.insert(textureToDraw2, { drawTexture, texX, texY, 0, 1, drawColor.r, drawColor.g, drawColor.b, drawColor.a }) end
+                    if hole then table.insert(textureToDraw2, { drawTexture, texX, texY, 0, textureScale, drawColor.r, drawColor.g, drawColor.b, drawColor.a }) end
 
                     if self.hoverOverPart == _part and self:isMouseOver() then
                         self.mouseOverFade = (self.mouseOverFade or 0.05) + (self.mouseOverFadeRate or 0.005)
                         self.mouseOverFadeRate = ((self.mouseOverFade >= 0.3) and -0.005) or ((self.mouseOverFade <= 0.05) and 0.005) or self.mouseOverFadeRate
-                        table.insert(textureToDraw2, { hole and self.holeCoverageTexture or self.coverageTexture, texX, texY, 0, 1, coverageColor.r, coverageColor.g, coverageColor.b, self.mouseOverFade })
+                        table.insert(textureToDraw2, { hole and self.holeCoverageTexture or self.coverageTexture, texX, texY, 0, textureScale, coverageColor.r, coverageColor.g, coverageColor.b, self.mouseOverFade })
                     end
 
                 end
@@ -822,7 +823,7 @@ function interactiveTailoringUI:prerender()
     self:drawItemIcon(self.clothing, clothingX, clothingY, 1, self.clothingUI.iW, self.clothingUI.iH)
 
     if self.clothing:isBroken() then
-        self:drawTexture(self.brokenItemIcon, clothingX+self.clothingUI.iW-12, clothingY+self.clothingUI.iH-14, 1, 1, 1, 1)
+        self:drawTextureScaled(self.brokenItemIcon, clothingX+self.clothingUI.iW-12, clothingY+self.clothingUI.iH-14, textureScale, textureScale, 1, 1, 1, 1)
     end
 
     if drawPin then
@@ -898,7 +899,7 @@ function interactiveTailoringUI:prerender()
                 self:drawRect(matX+1, matY+1, self.gridScale-2, self.gridScale-2, 0.1, 1, 1, 1)
             end
 
-            self:DrawTextureAngleScaled(getTexture("media/textures/"..piece.id.."_piece.png"), matX+16, matY+16, piece.rot, color.a, color.r, color.g, color.b, 1)
+            self:DrawTextureAngleScaled(getTexture("media/textures/"..piece.id.."_piece.png"), matX+16, matY+16, piece.rot, textureScale, color.r, color.g, color.b, color.a)
         end
     end
 
@@ -1058,8 +1059,9 @@ end
 
 
 function interactiveTailoringUI:addMaterialButtons()
-    local buttonSize = 26
-    local textureSize = 22
+    local scale = (self.gridScale/32)
+    local buttonSize = 26 * scale
+    local textureSize = 22 * scale
     local _x = self.mouseOverZones.sidebar.x+5
     local _y = self.gridY-1
 
@@ -1358,8 +1360,8 @@ function interactiveTailoringUI:new(player, clothing)
         o.clothingColor = {a=1,r=generatedColor.r,g=generatedColor.g,b=generatedColor.b}
     end
 
-    o.clothingUI.iW = o.clothingUI.icon:getWidthOrig()
-    o.clothingUI.iH = o.clothingUI.icon:getHeightOrig()
+    o.clothingUI.iW = (o.clothingUI.icon:getWidthOrig()/32)*gridScale
+    o.clothingUI.iH = (o.clothingUI.icon:getHeightOrig()/32)*gridScale
 
     o.borderColor = {r=0.4, g=0.4, b=0.4, a=1}
     o.backgroundColor = {r=0, g=0, b=0, a=0.8}

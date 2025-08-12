@@ -27,3 +27,7 @@ link3 = Github = https://steamcommunity.com/linkfilter/?u=https://github.com/Chu
 - UI scales up to 200% for appropriate resolutions.
 - Coverage UI uses dark/light dynamically based on clothing color.
 [ ------ ]
+
+[ 8/12/25 ]
+- Scales the rest of the UI.
+[ ------ ]
