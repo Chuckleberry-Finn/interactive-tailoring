@@ -1328,9 +1328,9 @@ function interactiveTailoringUI:new(player, clothing)
 
     o.inventoryCheck = 0
 
-    o:fetchItem("thread", "Thread", "Thread")
-    o:fetchItem("needle", "Needle", "SewingNeedle")
-    o:fetchItem("scissors", "Scissors", "Scissors")
+    o:fetchItem("thread", "Thread", ItemTag.THREAD)
+    o:fetchItem("needle", "Needle", ItemTag.SEWING_NEEDLE)
+    o:fetchItem("scissors", "Scissors", ItemTag.SCISSORS)
 
     pieceHandler.buildPieceTypeIndex()
     o:getAreas()
