@@ -42,4 +42,5 @@ link3 = Github = https://steamcommunity.com/linkfilter/?u=https://github.com/Chu
 
 [ 12/27/25 ]
 - Updated ItemTag uses to B42.13 API.
+- Added translation for "type of padding".
 [ ------ ]
