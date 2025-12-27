@@ -39,3 +39,7 @@ link3 = Github = https://steamcommunity.com/linkfilter/?u=https://github.com/Chu
 [ 8/12/25 - Hotfix 2 ]
 - Scaled Broken Icon
 [ ------ ]
+
+[ 12/27/25 ]
+- Updated ItemTag uses to B42.13 API.
+[ ------ ]

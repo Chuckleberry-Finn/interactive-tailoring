@@ -501,15 +501,15 @@ function interactiveTailoringUI:drawTools(x,y)
     local toolX = x+self.gridScale
 
     ---thread
-    self:drawTool(toolX,toolY,"thread","Thread","Thread", true)
+    self:drawTool(toolX,toolY,"thread","Thread",ItemTag.THREAD, true)
 
     ---needle
     toolX = toolX - toolPad - self.mouseOverZones.thread.w
-    self:drawTool(toolX,toolY,"needle","Needle","SewingNeedle")
+    self:drawTool(toolX,toolY,"needle","Needle",ItemTag.SEWING_NEEDLE)
 
     ---scissors
     toolX = toolX - toolPad - self.mouseOverZones.needle.w
-    self:drawTool(toolX,toolY,"scissors","Scissors","Scissors")
+    self:drawTool(toolX,toolY,"scissors","Scissors",ItemTag.SCISSORS)
 end
 
 
@@ -995,7 +995,7 @@ function interactiveTailoringUI.open(player, clothing)
 end
 
 
-function interactiveTailoringUI:fetchItem(forThis, type,tag)
+function interactiveTailoringUI:fetchItem(forThis, type, tag)
     if self[forThis] and self[forThis]:isInPlayerInventory() then return end
     if (not type and not tag) then self[forThis] = false return end
 
