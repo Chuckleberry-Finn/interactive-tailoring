@@ -1,4 +1,20 @@
 require "TimedActions/ISRepairClothing.lua"
+
+local origRepairClothingPerform = ISRepairClothing.perform
+function ISRepairClothing:perform()
+
+    origRepairClothingPerform(self)
+
+    if self.sound and self.character:getEmitter():isPlaying(self.sound) then
+        self.character:stopOrTriggerSound(self.sound)
+    end
+    self.character:resetModel()
+    self.started = false
+    ISGarmentUI.setBodyPartActionForPlayer(self.character, self.part, nil, nil, nil)
+    -- needed to remove from queue / start next.
+    ISBaseTimedAction.perform(self)
+end
+
 local origRepairClothingComplete = ISRepairClothing.complete
 function ISRepairClothing:complete()
     local result = origRepairClothingComplete(self)
@@ -13,7 +29,8 @@ function ISRepairClothing:complete()
         end
     end
     return result
-end
+end --sendAddXp
+
 
 local origRepairClothingUpdate = ISRepairClothing.update
 function ISRepairClothing:update()
@@ -23,10 +40,19 @@ function ISRepairClothing:update()
     ISGarmentUI.setBodyPartActionForPlayer(self.character, self.part, self, jobType, { })
 end
 
+
 local origRepairClothingStart = ISRepairClothing.start
 function ISRepairClothing:start()
     origRepairClothingStart(self)
     self:setOverrideHandModels(self.needle, self.clothing)
+end
+
+
+local origRepairClothingNew = ISRepairClothing.new
+function ISRepairClothing:new(character, clothing, part, fabric, thread, needle, patchMatchesPart)
+    local action = origRepairClothingNew(self, character, clothing, part, fabric, thread, needle)
+    action.patchMatchesPart = patchMatchesPart
+    return action
 end
 
 

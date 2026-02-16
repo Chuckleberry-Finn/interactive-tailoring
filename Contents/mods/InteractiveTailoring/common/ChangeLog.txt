@@ -44,3 +44,7 @@ link3 = Github = https://steamcommunity.com/linkfilter/?u=https://github.com/Chu
 - Updated ItemTag uses to B42.13 API.
 - Added translation for "type of padding".
 [ ------ ]
+
+[ 2/16/26 ]
+- Fixed bonusXP reward.
+[ ------ ]
