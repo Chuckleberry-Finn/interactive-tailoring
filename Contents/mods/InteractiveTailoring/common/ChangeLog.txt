@@ -48,3 +48,7 @@ link3 = Github = https://steamcommunity.com/linkfilter/?u=https://github.com/Chu
 [ 2/16/26 ]
 - Fixed bonusXP reward.
 [ ------ ]
+
+[ 2/23/26 ]
+- Fixed API change in B42.14 (getDirtyness > getDirtiness)
+[ ------ ]

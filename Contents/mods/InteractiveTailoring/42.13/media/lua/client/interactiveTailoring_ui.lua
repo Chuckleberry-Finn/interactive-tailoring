@@ -948,7 +948,11 @@ function interactiveTailoringUI:prerender()
     barY = barY+bar_hgt+fnt_hgt+(self.padding/2.5)
 
     self:drawText(getText("IGUI_garment_GlbDirt"), self.padding*2, barY, 1, 1, 1, 0.9, UIFont.Small)
-    self:drawBar(self.padding*2, barY+fnt_hgt, barW, bar_hgt, self.clothing:getDirtyness() / 100, false)
+
+    ---B42.13 -> 42.14
+    local dirtiness = self.clothing.getDirtyness and self.clothing:getDirtyness() or self.clothing:getDirtiness()
+
+    self:drawBar(self.padding*2, barY+fnt_hgt, barW, bar_hgt, dirtiness / 100, false)
 
     self:drawTools(self.mouseOverZones.sidebar.x,clothingY)
 
