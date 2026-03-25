@@ -57,15 +57,16 @@ interactiveTailoringUI.patchColor = {
 
 
 ---@param patch ClothingPatch
+---@param patch ClothingPatch
 ---@return boolean
----Astaghfirullah, why do we need this for reading java fields of exposed classes.
-function interactiveTailoringUI:checkPatchHasHole(patch)
+function interactiveTailoringUI:checkPatchHasHole(patch, clothing, part)
     if not patch then return false end
-
+    --[[
+    ---as per B42.15 reflection was removed, no getter for hasHole was added.
     local fieldStr = "public boolean zombie.inventory.types.Clothing$ClothingPatch.hasHole"
     local fieldCount = getNumClassFields(patch)
 
-    for i = 0, fieldCount - 1 do
+    --[[for i = 0, fieldCount - 1 do
         local field = getClassField(patch, i)
         if field and tostring(field) == fieldStr then
             return getClassFieldVal(patch, field) == true
@@ -73,6 +74,19 @@ function interactiveTailoringUI:checkPatchHasHole(patch)
     end
 
     return false
+--]]
+    local baseDef  = clothing:getScratchDefense()
+    local patchDef = patch:getScratchDefense()
+    local combined = clothing:getDefForPart(part, false, false)
+
+    if part == BloodBodyPartType.Neck then
+        local modifier = clothing:getNeckProtectionModifier()
+        if modifier < 1.0 then
+            baseDef = baseDef * modifier
+        end
+    end
+
+    return combined == patchDef and combined ~= (baseDef + patchDef)
 end
 
 
@@ -202,7 +216,7 @@ function interactiveTailoringUI:patchTooltip(fabric, part, name, tooltip)
 
         local patch = self.clothing:getPatchType(part)
         if patch then
-            self.patchHasHole[part] = self.patchHasHole[part] or self:checkPatchHasHole(patch)
+            self.patchHasHole[part] = self.patchHasHole[part] or self:checkPatchHasHole(patch, self.clothing, part)
             local typeOf = self.patchHasHole[part] and getText("IGUI_TypeOfPatch", patch:getFabricTypeName()) or getText("IGUI_TypeOfPadding", patch:getFabricTypeName())
             tooltip.description = tooltip.description .. " <GREEN>".. typeOf .. " <LINE>"
         end
@@ -353,7 +367,7 @@ function interactiveTailoringUI:doDrawItem(y, item, alt)
     if patch then
         y = y + self.parent.fontSmallHgt
 
-        self.parent.patchHasHole[part] = self.parent.patchHasHole[part] or self.parent:checkPatchHasHole(patch)
+        self.parent.patchHasHole[part] = self.parent.patchHasHole[part] or self.parent:checkPatchHasHole(patch, self.parent.clothing, part)
         local typeOf = self.parent.patchHasHole[part] and getText("IGUI_TypeOfPatch", patch:getFabricTypeName()) or getText("IGUI_TypeOfPadding", patch:getFabricTypeName())
 
         self:drawText("- " .. typeOf, 10, y, gr,gg,gb, 1, UIFont.Small)

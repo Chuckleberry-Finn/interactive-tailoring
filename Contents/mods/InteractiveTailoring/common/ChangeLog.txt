@@ -52,3 +52,8 @@ link3 = Github = https://steamcommunity.com/linkfilter/?u=https://github.com/Chu
 [ 2/23/26 ]
 - Fixed API change in B42.14 (getDirtyness > getDirtiness)
 [ ------ ]
+
+[ 3/25/26 ]
+- B42.15 Json translations.
+- Reflection workaround for patch getHole.
+[ ------ ]
