@@ -57,3 +57,7 @@ link3 = Github = https://steamcommunity.com/linkfilter/?u=https://github.com/Chu
 - B42.15 Json translations.
 - Reflection workaround for patch getHole.
 [ ------ ]
+
+[ 5/7/26 ]
+Fix ability to patch unpatachable clothing.
+[ ------ ]

@@ -57,15 +57,16 @@ interactiveTailoringUI.patchColor = {
 
 
 ---@param patch ClothingPatch
+---@param patch ClothingPatch
 ---@return boolean
----Astaghfirullah, why do we need this for reading java fields of exposed classes.
-function interactiveTailoringUI:checkPatchHasHole(patch)
+function interactiveTailoringUI:checkPatchHasHole(patch, clothing, part)
     if not patch then return false end
-
+    --[[
+    ---as per B42.15 reflection was removed, no getter for hasHole was added.
     local fieldStr = "public boolean zombie.inventory.types.Clothing$ClothingPatch.hasHole"
     local fieldCount = getNumClassFields(patch)
 
-    for i = 0, fieldCount - 1 do
+    --[[for i = 0, fieldCount - 1 do
         local field = getClassField(patch, i)
         if field and tostring(field) == fieldStr then
             return getClassFieldVal(patch, field) == true
@@ -73,11 +74,24 @@ function interactiveTailoringUI:checkPatchHasHole(patch)
     end
 
     return false
+--]]
+    local baseDef  = clothing:getScratchDefense()
+    local patchDef = patch:getScratchDefense()
+    local combined = clothing:getDefForPart(part, false, false)
+
+    if part == BloodBodyPartType.Neck then
+        local modifier = clothing:getNeckProtectionModifier()
+        if modifier < 1.0 then
+            baseDef = baseDef * modifier
+        end
+    end
+
+    return combined == patchDef and combined ~= (baseDef + patchDef)
 end
 
 
 function interactiveTailoringUI:repairClothing(part, fabric)
-    if not fabric or not self.clothing or not self.thread or not self.needle then return end
+    if (not fabric) or (not self.clothing) or (not self.clothing:getFabricType()) or (not self.thread) or (not self.needle) then return end
 
     local things = {fabric, self.thread, self.needle, self.clothing}
 
@@ -88,10 +102,11 @@ function interactiveTailoringUI:repairClothing(part, fabric)
         end
     end
 
-    local action = ISRepairClothing:new(self.player, self.clothing, part, fabric, self.thread, self.needle)
+
     local xp = SandboxVars.InteractiveTailoring.BonusXP or 12
     local finalXP = self:patchMatchesPart(fabric, part:index()) and xp or (xp/2)
-    action.patchMatchesPart = finalXP
+    --finalXp = action.patchMatchesPart
+    local action = ISRepairClothing:new(self.player, self.clothing, part, fabric, self.thread, self.needle, finalXP)
     ISTimedActionQueue.add(action)
 end
 
@@ -201,7 +216,7 @@ function interactiveTailoringUI:patchTooltip(fabric, part, name, tooltip)
 
         local patch = self.clothing:getPatchType(part)
         if patch then
-            self.patchHasHole[part] = self.patchHasHole[part] or self:checkPatchHasHole(patch)
+            self.patchHasHole[part] = self.patchHasHole[part] or self:checkPatchHasHole(patch, self.clothing, part)
             local typeOf = self.patchHasHole[part] and getText("IGUI_TypeOfPatch", patch:getFabricTypeName()) or getText("IGUI_TypeOfPadding", patch:getFabricTypeName())
             tooltip.description = tooltip.description .. " <GREEN>".. typeOf .. " <LINE>"
         end
@@ -352,7 +367,7 @@ function interactiveTailoringUI:doDrawItem(y, item, alt)
     if patch then
         y = y + self.parent.fontSmallHgt
 
-        self.parent.patchHasHole[part] = self.parent.patchHasHole[part] or self.parent:checkPatchHasHole(patch)
+        self.parent.patchHasHole[part] = self.parent.patchHasHole[part] or self.parent:checkPatchHasHole(patch, self.parent.clothing, part)
         local typeOf = self.parent.patchHasHole[part] and getText("IGUI_TypeOfPatch", patch:getFabricTypeName()) or getText("IGUI_TypeOfPadding", patch:getFabricTypeName())
 
         self:drawText("- " .. typeOf, 10, y, gr,gg,gb, 1, UIFont.Small)
@@ -431,7 +446,6 @@ function interactiveTailoringUI:onMouseWheel(del)
         end
     end
 
-
     if self.draggingMaterial then
         --{ strip=strip, id=piece.id, rot=piece.rot, color=color }
         local fabricMD = self.draggingMaterial.strip and self.draggingMaterial.strip:getModData()
@@ -501,15 +515,15 @@ function interactiveTailoringUI:drawTools(x,y)
     local toolX = x+self.gridScale
 
     ---thread
-    self:drawTool(toolX,toolY,"thread","Thread","Thread", true)
+    self:drawTool(toolX,toolY,"thread","Thread",ItemTag.THREAD, true)
 
     ---needle
     toolX = toolX - toolPad - self.mouseOverZones.thread.w
-    self:drawTool(toolX,toolY,"needle","Needle","SewingNeedle")
+    self:drawTool(toolX,toolY,"needle","Needle",ItemTag.SEWING_NEEDLE)
 
     ---scissors
     toolX = toolX - toolPad - self.mouseOverZones.needle.w
-    self:drawTool(toolX,toolY,"scissors","Scissors","Scissors")
+    self:drawTool(toolX,toolY,"scissors","Scissors",ItemTag.SCISSORS)
 end
 
 
@@ -912,10 +926,10 @@ function interactiveTailoringUI:prerender()
 
 
     ---header
-    self:drawRectBorder(self.padding-2, self.padding+self.tbh+1, self:getWidth()-(self.padding*2)+4, self.headerHeight, 0.9, 0.5, 0.5, 0.5)
-
 
     if not self.clothing:getFabricType() then
+        self:drawRectBorder(self.padding-2, self.padding+self.tbh+1, self:getWidth()-(self.padding*2)+4, self.headerHeight,
+                self.failColor.a*1.5, self.failColor.r, self.failColor.g, self.failColor.b)
         self:drawText(getText("IGUI_garment_CantRepair"),
                 clothingX, clothingY+self.padding+self.clothingUI.iH,
                 self.failColor.r, self.failColor.g, self.failColor.b, self.failColor.a*2, UIFont.Small)
@@ -924,6 +938,7 @@ function interactiveTailoringUI:prerender()
                 self.mouseOverZones.clothing.w, self.mouseOverZones.clothing.h,
                 self.failColor.a*1.5, self.failColor.r, self.failColor.g, self.failColor.b)
     else
+        self:drawRectBorder(self.padding-2, self.padding+self.tbh+1, self:getWidth()-(self.padding*2)+4, self.headerHeight, 0.9, 0.5, 0.5, 0.5)
         self:drawRectBorder(
                 self.mouseOverZones.clothing.x, self.mouseOverZones.clothing.y,
                 self.mouseOverZones.clothing.w, self.mouseOverZones.clothing.h,
@@ -947,7 +962,11 @@ function interactiveTailoringUI:prerender()
     barY = barY+bar_hgt+fnt_hgt+(self.padding/2.5)
 
     self:drawText(getText("IGUI_garment_GlbDirt"), self.padding*2, barY, 1, 1, 1, 0.9, UIFont.Small)
-    self:drawBar(self.padding*2, barY+fnt_hgt, barW, bar_hgt, self.clothing:getDirtyness() / 100, false)
+
+    ---B42.13 -> 42.14
+    local dirtiness = self.clothing.getDirtyness and self.clothing:getDirtyness() or self.clothing:getDirtiness()
+
+    self:drawBar(self.padding*2, barY+fnt_hgt, barW, bar_hgt, dirtiness / 100, false)
 
     self:drawTools(self.mouseOverZones.sidebar.x,clothingY)
 
@@ -995,7 +1014,7 @@ function interactiveTailoringUI.open(player, clothing)
 end
 
 
-function interactiveTailoringUI:fetchItem(forThis, type,tag)
+function interactiveTailoringUI:fetchItem(forThis, type, tag)
     if self[forThis] and self[forThis]:isInPlayerInventory() then return end
     if (not type and not tag) then self[forThis] = false return end
 
@@ -1272,7 +1291,7 @@ function interactiveTailoringUI:onMouseUp(x, y)
     self.hoverOverPart = nil
     self.draggingMaterial = nil
 
-    if part and strip and (not self.clothing:getPatchType(part)) then
+    if part and strip and self.clothing:getFabricType() and (not self.clothing:getPatchType(part)) then
         self:repairClothing(part, strip)
     end
 end
@@ -1328,9 +1347,9 @@ function interactiveTailoringUI:new(player, clothing)
 
     o.inventoryCheck = 0
 
-    o:fetchItem("thread", "Thread", "Thread")
-    o:fetchItem("needle", "Needle", "SewingNeedle")
-    o:fetchItem("scissors", "Scissors", "Scissors")
+    o:fetchItem("thread", "Thread", ItemTag.THREAD)
+    o:fetchItem("needle", "Needle", ItemTag.SEWING_NEEDLE)
+    o:fetchItem("scissors", "Scissors", ItemTag.SCISSORS)
 
     pieceHandler.buildPieceTypeIndex()
     o:getAreas()
