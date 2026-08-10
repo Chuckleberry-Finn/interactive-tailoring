@@ -1,5 +1,7 @@
 require "TimedActions/ISRepairClothing.lua"
 
+---TODO: figure out why I included this at all, lol
+--[[
 local origRepairClothingPerform = ISRepairClothing.perform
 function ISRepairClothing:perform()
 
@@ -14,6 +16,7 @@ function ISRepairClothing:perform()
     -- needed to remove from queue / start next.
     ISBaseTimedAction.perform(self)
 end
+--]]
 
 local origRepairClothingComplete = ISRepairClothing.complete
 function ISRepairClothing:complete()
@@ -32,6 +35,7 @@ function ISRepairClothing:complete()
 end --sendAddXp
 
 
+--[[
 local origRepairClothingUpdate = ISRepairClothing.update
 function ISRepairClothing:update()
     origRepairClothingUpdate(self)
@@ -39,6 +43,7 @@ function ISRepairClothing:update()
     local jobType = hole and getText("ContextMenu_PatchHole") or getText("ContextMenu_AddPadding")
     ISGarmentUI.setBodyPartActionForPlayer(self.character, self.part, self, jobType, { })
 end
+--]] ---Vanilla bug fixed! :o
 
 
 local origRepairClothingStart = ISRepairClothing.start

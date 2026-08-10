@@ -113,7 +113,13 @@ end
 
 function interactiveTailoringUI:update()
     ISCollapsableWindow.update(self)
-    if not self.clothing or not self.clothing:isInPlayerInventory() then self:close() end
+    if not self.clothing then self:close() return end
+
+    local freshClothing = self.player:getInventory():getItemById(self.clothing:getID())
+    if not freshClothing then self:close() return end
+    self.clothing = freshClothing
+
+    if not self.clothing:isInPlayerInventory() then self:close() end
 end
 
 

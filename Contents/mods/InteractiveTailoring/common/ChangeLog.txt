@@ -61,3 +61,8 @@ link3 = Github = https://steamcommunity.com/linkfilter/?u=https://github.com/Chu
 [ 5/7/26 ]
 Fix ability to patch unpatachable clothing.
 [ ------ ]
+
+[ 8/10/26 ]
+- Fixed issue with UI update in MP
+- Removed two bug-fixes that are now official.
+[ ------ ]
